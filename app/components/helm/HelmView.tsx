@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 
 import { bearingBetween, distanceBetween } from "../../core/navigation.ts";
-import { ringCoordinates } from "../chart/perimeterLayer";
 import type { BoatDefinition, BoatState, BoatType, Mission, Position } from "../../core/types";
 import type { HelmCamera, OrbitState } from "../../store/commandSlice.ts";
-import EgoView, { type EgoTheme, type EgoTraffic } from "./EgoView";
+import HelmStage, { type HelmTheme } from "./HelmStage";
 import { useHelmKeys } from "./useHelmKeys.ts";
 import HeadingTape from "./HeadingTape";
 import HelmMap from "./HelmMap";
-import { contactsAhead, relativeFix, timeToPoint } from "./frame";
+import { contactsAhead, timeToPoint } from "./frame";
+import { ballastBalance } from "../vessel/subsystems.ts";
 import "./helmStage.css";
 
 /**
@@ -43,16 +43,7 @@ interface HelmViewProps {
   objectiveRadiusNm: number;
   camera: HelmCamera;
   orbit: OrbitState;
-  /** AIS traffic around the boat, for the scene and the contact list. */
-  traffic: readonly {
-    mmsi: number;
-    name: string;
-    latitude: number;
-    longitude: number;
-    headingDegrees: number;
-    lengthM: number | null;
-  }[];
-  theme: EgoTheme;
+  theme: HelmTheme;
   onOrbit: (delta: { yaw?: number; pitch?: number; distance?: number }) => void;
   onToggleManual: (manual: boolean) => void;
   onRecall: () => void;
@@ -82,7 +73,6 @@ export default function HelmView({
   objectiveRadiusNm,
   camera,
   orbit,
-  traffic,
   theme,
   onOrbit,
   onToggleManual,
@@ -118,45 +108,11 @@ export default function HelmView({
   );
   const course = courseToNextWaypoint(boat, mission);
 
-  // Everything still ahead on the route, nearest first, as relative fixes.
-  const route = (mission?.waypoints ?? []).slice(boat.waypointIndex).map((waypoint) => ({
-    ...relativeFix(boat.position, boat.headingDegrees, waypoint),
-    distanceNm: distanceBetween(boat.position, waypoint),
-  }));
-
-  const egoTraffic: EgoTraffic[] = traffic.map((ship) => ({
-    mmsi: ship.mmsi,
-    name: ship.name,
-    lengthM: ship.lengthM ?? 30,
-    aspectDegrees: ((ship.headingDegrees - boat.headingDegrees + 540) % 360) - 180,
-    ...relativeFix(boat.position, boat.headingDegrees, {
-      latitude: ship.latitude,
-      longitude: ship.longitude,
-    }),
-    distanceNm: distanceBetween(boat.position, {
-      latitude: ship.latitude,
-      longitude: ship.longitude,
-    }),
-  }));
-
-  // The objective area as the helm sees it: its rim sampled all the way round
-  // and each point turned into a relative fix, so the stage can bend the ring
-  // through its own range compression instead of being handed a flat circle.
-  const objectiveRing = objective === null ? null : ringCoordinates(objective, objectiveRadiusNm)
-    .map(([longitude, latitude]) => {
-      const point = { latitude, longitude };
-      return {
-        ...relativeFix(boat.position, boat.headingDegrees, point),
-        distanceNm: distanceBetween(boat.position, point),
-      };
-    });
-
+  // The leg readout needs the range to the next waypoint and nothing else.
+  // The stage draws the route itself, from the same waypoints, on the map.
   const waypoint = mission?.waypoints[boat.waypointIndex] ?? null;
   const lane = waypoint
-    ? {
-      ...relativeFix(boat.position, boat.headingDegrees, waypoint),
-      distanceNm: distanceBetween(boat.position, waypoint),
-    }
+    ? { distanceNm: distanceBetween(boat.position, waypoint) }
     : null;
 
   // Under autopilot the rudder shown is the course error the boat is working
@@ -179,28 +135,33 @@ export default function HelmView({
     0,
     Math.min(100, 100 - (Math.abs(boat.speedKnots) / definition.maximumSpeedKnots) * 14),
   );
-  const speedRatio = Math.min(Math.abs(boat.speedKnots) / definition.maximumSpeedKnots, 1);
-  const ballastShift = Math.max(-8, Math.min(8, (shownRudder / 35) * speedRatio * 8));
-  const portBallast = 50 - ballastShift;
-  const starboardBallast = 50 + ballastShift;
+  // One owner for the ballast estimate: the systems windows report the same
+  // port/starboard split, and two copies of one model would eventually
+  // disagree about the same hull.
+  const { portPercent: portBallast, starboardPercent: starboardBallast } = ballastBalance(
+    boat.speedKnots,
+    definition.maximumSpeedKnots,
+    shownRudder,
+  );
 
   return (
     <section className="helm-screen" aria-label={`Helm station ${definition.name}`}>
       <div className="helm-stage">
-        <EgoView
+        <HelmStage
+          boatId={boat.id}
+          name={definition.name}
           type={definition.type}
-          speedKnots={boat.speedKnots}
-          contacts={contacts}
-          lane={lane}
-          route={route}
-          traffic={egoTraffic}
-          objectiveRing={objectiveRing}
-          theme={theme}
-          manual={manual}
-          camera={camera}
-          orbit={orbit}
           position={boat.position}
           headingDegrees={boat.headingDegrees}
+          speedKnots={boat.speedKnots}
+          neighbours={neighbours}
+          mission={mission}
+          waypointIndex={boat.waypointIndex}
+          objective={objective}
+          objectiveRadiusNm={objectiveRadiusNm}
+          theme={theme}
+          camera={camera}
+          orbit={orbit}
           onOrbit={onOrbit}
         />
 

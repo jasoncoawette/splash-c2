@@ -13,9 +13,12 @@ import {
   boatToggled,
   groupFormed,
   simRateChanged,
+  subsystemToggled,
+  subsystemsSet,
   THROTTLE_NOTCHES,
   THROTTLE_STOP_INDEX,
 } from "../app/store/commandSlice.ts";
+import { selectActivity } from "../app/store/selectors.ts";
 import {
   closeDemoScenario,
   createBoat,
@@ -409,4 +412,62 @@ test("the telegraph cannot be stepped past either stop", () => {
   for (let i = 0; i < 24; i += 1) store.dispatch(stepThrottle(-1));
   assert.equal(store.getState().command.throttleNotch, 0);
   assert.equal(store.getState().fleet.notice, null);
+});
+
+test("the open systems windows are operator intent, not fleet state", () => {
+  const store = makeStore();
+  const fleetBefore = store.getState().fleet.fleet;
+
+  store.dispatch(subsystemToggled("TURRET"));
+  assert.deepEqual(store.getState().command.openSubsystems, ["DRIVE", "TURRET"]);
+
+  // Toggling is a toggle: the same id closes the window it opened.
+  store.dispatch(subsystemToggled("DRIVE"));
+  assert.deepEqual(store.getState().command.openSubsystems, ["TURRET"]);
+
+  store.dispatch(subsystemsSet([]));
+  assert.deepEqual(store.getState().command.openSubsystems, []);
+
+  // Opening a window cannot be allowed to touch the fleet, or a replay would
+  // depend on which readout happened to be open.
+  assert.equal(store.getState().fleet.fleet, fleetBefore);
+});
+
+test("activity reports what the seeded fleet is doing, and follows a tasking", () => {
+  const store = makeStore();
+
+  const idle = selectActivity(store.getState());
+  assert.equal(idle.total, 3);
+  assert.equal(idle.underway, 0);
+  assert.equal(idle.tasked, 0);
+  assert.ok(idle.entries.every((entry) => entry.kind === "IDLE"));
+
+  store.dispatch(routeSelection("SWEEP"));
+  store.dispatch(simulationTicked());
+
+  const tasked = selectActivity(store.getState());
+  assert.equal(tasked.tasked, 3);
+  assert.ok(tasked.underway > 0, "a routed fleet is making way");
+  assert.ok(tasked.effort > 0, "and the measure says so");
+  assert.ok(tasked.entries.every((entry) => entry.progress !== null));
+
+  // One cached result per state: a selector that recomputed on every read
+  // would re-sort the list under the operator every tick.
+  assert.equal(selectActivity(store.getState()), tasked);
+});
+
+test("a lost link shows up in activity as a fault, ahead of the healthy hulls", () => {
+  const store = makeStore();
+
+  store.dispatch(prepareDemoScenario());
+  store.dispatch(launchDemoScenario());
+  store.dispatch(injectDemoLinkLoss());
+
+  const activity = selectActivity(store.getState());
+  const affected = store.getState().scenario.affectedBoatId;
+
+  assert.equal(activity.faults, 1);
+  assert.equal(activity.entries[0].boatId, affected);
+  assert.equal(activity.entries[0].kind, "FAULT");
+  assert.equal(activity.entries[0].speedKnots, 0, "the hull is stopped onboard");
 });

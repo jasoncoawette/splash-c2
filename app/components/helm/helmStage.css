@@ -1,6 +1,6 @@
 /* The helm screen: the hull is the subject, its numbers sit over the top left,
-   and the chart is a corner readout. Namespaced .helm-screen / .ego-* classes,
-   so the panels keep their own styling from globals.css. */
+   and the chart is a corner readout. Namespaced .helm-* classes, so the panels
+   keep their own styling from globals.css. */
 
 .helm-screen {
   position: relative;
@@ -26,85 +26,55 @@
 
 /* -- the three dimensional stage ------------------------------------------- */
 
-.ego-view,
-.ego-canvas,
-.ego-labels {
+/* The stage is a Mapbox map pitched onto the water. It carries its own sky and
+   its own horizon, so there is no gradient behind it to fake one — what used to
+   be a painted backdrop is the atmosphere of the basemap now. */
+.helm-stage-map {
   position: absolute;
   inset: 0;
+  cursor: grab;
 }
 
-/* Sky behind the scene, so the horizon has something to sit against. */
-.ego-view {
-  isolation: isolate;
-  background: linear-gradient(#0a2130 0%, #0a1b26 38%, #061018 52%, #03080c 100%);
+.helm-stage-map[data-dragging="true"] {
+  cursor: grabbing;
 }
 
-.ego-canvas canvas {
+.helm-stage-map canvas {
   display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.ego-labels {
-  pointer-events: none;
-}
-
-.ego-contact {
-  position: absolute;
-  top: 0;
-  left: 0;
-  padding: 2px 7px;
-  border: 1px solid rgba(82, 203, 255, 0.45);
-  border-radius: 3px;
-  background: rgb(var(--deep-rgb) / 0.82);
-  color: var(--foreground);
-  font-family: var(--font-chakra-petch), sans-serif;
-  font-size: 0.56rem;
-  letter-spacing: 0.08em;
-  white-space: nowrap;
-}
-
-.ego-contact::after {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  width: 1px;
-  height: 8px;
-  background: currentColor;
-  content: "";
-  opacity: 0.45;
-}
-
-.ego-contact[data-visible="false"] {
-  display: none;
-}
-
-.ego-mode {
-  position: absolute;
-  bottom: 86px;
-  left: 50%;
-  padding: 4px 12px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: rgb(var(--deep-rgb) / 0.8);
-  color: var(--muted);
-  font-family: var(--font-chakra-petch), sans-serif;
-  font-size: 0.58rem;
-  letter-spacing: 0.14em;
-  transform: translateX(-50%);
-}
-
-.ego-mode.is-live {
-  border-color: var(--accent);
-  color: var(--accent);
+  outline: none;
 }
 
 /* -- the cluster: mode, name, speed with charge beside it, then the derived
    readouts. Ordered the way an operator reads it: what is flying the boat,
    which boat, how fast, and what it will do if asked to turn. -------------- */
 
+/* A scrim for the readouts, not decoration.
+ *
+ * The stage used to paint its own sky, so the top of the frame was reliably
+ * dark and white text sat on it. The stage is a real map now and the top of
+ * the frame is whatever the atmosphere is doing — a pale haze band at the
+ * horizon in either theme, which washed the vessel name and the derived
+ * readouts out to grey on grey. This guarantees the contrast the sky no
+ * longer does, and only at the top, so it never touches the water. */
+.helm-stage::before {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 190px;
+  content: "";
+  pointer-events: none;
+  background: linear-gradient(
+    rgb(var(--deep-rgb) / 0.82) 0%,
+    rgb(var(--deep-rgb) / 0.45) 55%,
+    transparent 100%
+  );
+}
+
 .helm-cluster {
   position: absolute;
+  z-index: 2;
   top: 18px;
   left: 20px;
   display: grid;
@@ -237,6 +207,7 @@
 /* The leg card, where a car would name the next turn. */
 .helm-leg {
   position: absolute;
+  z-index: 2;
   top: 18px;
   left: 50%;
   display: grid;
@@ -447,56 +418,10 @@
   color: var(--accent);
 }
 
-/* THE EDGE OF THE FIELD OF VIEW
- *
- * What the boat senses is sharp in the middle and uncertain at the periphery,
- * so the stage blurs and fades outward. The blur is a real backdrop filter
- * masked to the edges, not a painted gradient: the scene underneath keeps
- * moving through it.
- */
-.ego-field {
-  position: absolute;
-  z-index: 1;
-  inset: 0;
-  backdrop-filter: blur(6px);
-  pointer-events: none;
-  mask-image: radial-gradient(
-    ellipse 82% 78% at 50% 66%,
-    transparent 58%,
-    rgba(0, 0, 0, 0.5) 78%,
-    #000 100%
-  );
-}
-
-.ego-fade {
-  position: absolute;
-  z-index: 2;
-  inset: 0;
-  pointer-events: none;
-  background:
-    radial-gradient(
-      ellipse 86% 80% at 50% 66%,
-      transparent 62%,
-      rgb(var(--deep-rgb) / 0.35) 84%,
-      rgb(var(--deep-rgb) / 0.8) 100%
-    );
-}
-
-
 /* -- light mode ------------------------------------------------------------ */
 
 :root[data-theme="light"] .helm-screen {
   background: #e8eff4;
-}
-
-:root[data-theme="light"] .ego-view {
-  background: linear-gradient(#cfe4f2 0%, #dbe9f1 42%, #e7eff4 54%, #eef3f6 100%);
-}
-
-:root[data-theme="light"] .ego-contact,
-:root[data-theme="light"] .ego-mode {
-  background: rgb(255 255 255 / 0.86);
-  color: #123243;
 }
 
 /* The helm's floating cards follow the same rule: lift in daylight, flat at
@@ -528,12 +453,6 @@
 :root[data-theme="light"] .helm-mode {
   font-weight: 500;
   letter-spacing: 0.2em;
-}
-
-/* Labels on a daylit sea need a light plate, not a dark one. */
-:root[data-theme="light"] .ego-contact {
-  border-color: rgb(31 92 122 / 0.35);
-  box-shadow: 0 2px 10px rgb(0 0 0 / 0.12);
 }
 
 /* The route lane's sea is painted dark in globals.css; in daylight it needs to

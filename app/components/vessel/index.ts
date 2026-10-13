@@ -7,3 +7,13 @@ export {
 } from "./layer";
 export { TYPHOON_LENGTH_M } from "./typhoon";
 export { TEMPEST_LENGTH_M } from "./tempest";
+export {
+  ballastBalance,
+  hasEstimate,
+  subsystemsOf,
+  SUBSYSTEM_ORDER,
+  type Subsystem,
+  type SubsystemContext,
+  type SubsystemId,
+  type SubsystemStatus,
+} from "./subsystems";

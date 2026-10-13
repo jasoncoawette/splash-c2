@@ -165,7 +165,7 @@ function depthRamp(light: boolean): mapboxgl.ExpressionSpecification {
   ] as unknown as mapboxgl.ExpressionSpecification;
 }
 
-const TERRAIN_SOURCE = "mapbox-terrain-dem";
+export const TERRAIN_SOURCE = "mapbox-terrain-dem";
 export const TERRAIN_LAYER = "mapbox-terrain-hillshade";
 
 /**
@@ -194,6 +194,24 @@ export function addTerrain(map: MapboxMap): void {
       "hillshade-exaggeration": 0.65,
     },
   });
+}
+
+/**
+ * The same DEM, actually in three dimensions.
+ *
+ * `addTerrain` above paints a hillshade: shading on a surface that stays flat.
+ * That is right for a chart looked at from overhead, and wrong for a camera
+ * sitting on the water — tilt a flat map to 85 degrees and the horizon is a
+ * dead straight line with no land standing on it.
+ *
+ * `setTerrain` displaces the map surface by the elevation in the same source,
+ * so a pitched camera sees the shore rise and occlude what is behind it. No
+ * extra data: this is the DEM `addTerrain` already added.
+ */
+export function setTerrainRelief(map: MapboxMap, exaggeration: number): void {
+  if (!map.getSource(TERRAIN_SOURCE)) return;
+
+  map.setTerrain({ source: TERRAIN_SOURCE, exaggeration });
 }
 
 export function addSeascape(map: MapboxMap): void {

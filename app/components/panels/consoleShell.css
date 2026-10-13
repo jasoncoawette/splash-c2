@@ -448,3 +448,36 @@
 .console-stage[data-detail-open="true"] {
   --chart-inset-right: calc(var(--panel-w) + 32px);
 }
+
+/* THE ACTIVITY WINDOW, UNDER THE FLEET
+ *
+ * A second surface on the left edge, at the fleet panel's width, holding what
+ * the fleet is doing. The two share one column, so the fleet list gives up the
+ * bottom of the edge rather than the activity window floating over it: an
+ * operator reads "what I own" and "what it is doing" down one line of sight.
+ *
+ * The height is a token because two rules need the same figure — the fleet
+ * panel's bottom and the activity panel's top — and a number typed twice is a
+ * number that will disagree with itself.
+ */
+.console-stage {
+  /* Tall enough for three rows and the measure without clipping the third,
+     and capped so the vessel list above it keeps the bulk of the column. */
+  --activity-h: clamp(168px, 32vh, 302px);
+}
+
+.shell-panel.is-activity {
+  top: auto;
+  left: 12px;
+  height: var(--activity-h);
+}
+
+.console-stage[data-activity-open="true"] .shell-panel.is-fleet {
+  bottom: calc(12px + var(--activity-h) + var(--panel-gap));
+}
+
+/* The handle closes the whole left column, so it centres on the column rather
+   than on the fleet list alone. */
+.console-stage[data-activity-open="true"] .console-handle.is-fleet {
+  top: calc(50% - (var(--activity-h) + var(--panel-gap)) / 2);
+}

@@ -7,6 +7,8 @@ import {
   detailPanelToggled,
   fleetPanelToggled,
   boatsSelected,
+  subsystemToggled,
+  subsystemsSet,
   toolSelected,
   viewChanged,
   type ConsoleView,
@@ -32,6 +34,8 @@ import {
   selectFleetPanelOpen,
   selectChartTool,
   selectBoatViews,
+  selectElapsedSeconds,
+  selectOpenSubsystems,
   selectNeighbours,
   selectHelmCamera,
   selectNotice,
@@ -44,8 +48,11 @@ import {
   selectSelectedMission,
   selectView,
 } from "../store/selectors.ts";
+import ActivityPanel from "./panels/ActivityPanel";
 import ConsoleShell from "./panels/ConsoleShell";
 import FleetPanel from "./panels/FleetPanel";
+import VesselSchematic from "./vessel/VesselSchematic";
+import type { SubsystemId } from "./vessel/subsystems.ts";
 import ChartToolbar from "./map/ChartToolbar";
 import VesselOutline from "./outline/VesselOutline";
 import FleetMap from "./FleetMap";
@@ -79,6 +86,11 @@ export default function FleetDashboard() {
   const fleetPanelOpen = useAppSelector(selectFleetPanelOpen);
   const detailPanelOpen = useAppSelector(selectDetailPanelOpen);
   const chartTool = useAppSelector(selectChartTool);
+  const openSubsystems = useAppSelector(selectOpenSubsystems);
+  const elapsedSeconds = useAppSelector(selectElapsedSeconds);
+  // The schematic reports a part as offline when the hull is not answering, so
+  // it reads the same link record the fleet card's LINK LOST badge does.
+  const links = useAppSelector((state) => state.scenario.links);
   const rudderDegrees = useAppSelector(selectRudderDegrees);
   const helmCamera = useAppSelector(selectHelmCamera);
   const orbit = useAppSelector(selectOrbit);
@@ -119,6 +131,8 @@ export default function FleetDashboard() {
   const takeOver = (boatId: BoatId) => dispatch(orderTakeOver(boatId));
   const recall = (boatId: BoatId) => dispatch(boatRecalled(boatId));
   const toggleDemo = () => dispatch(orderToggleDemoScenario());
+  const toggleSubsystem = (id: SubsystemId) => dispatch(subsystemToggled(id));
+  const setSubsystems = (ids: readonly SubsystemId[]) => dispatch(subsystemsSet(ids));
 
   return (
     <main className="c2-shell" data-view={view.toLowerCase()}>
@@ -131,7 +145,6 @@ export default function FleetDashboard() {
           rudderDegrees={rudderDegrees}
           objective={objective}
           objectiveRadiusNm={radiusNm}
-          traffic={contacts}
           theme={theme}
           camera={helmCamera}
           orbit={orbit}
@@ -152,6 +165,7 @@ export default function FleetDashboard() {
           fleet={(
             <FleetPanel />
           )}
+          activity={<ActivityPanel />}
           detail={selectedBoat && selectedDefinition ? (
             <section className="vessel-detail" aria-label={selectedDefinition.name}>
               <div className="panel-heading">
@@ -171,6 +185,25 @@ export default function FleetDashboard() {
               </div>
 
               <div className="detail-body">
+                {/* Part by part first, then the boat as a whole: an operator
+                    opening this panel is usually asking about one thing. */}
+                <VesselSchematic
+                  definition={selectedDefinition}
+                  state={selectedBoat}
+                  openIds={openSubsystems}
+                  onToggle={toggleSubsystem}
+                  onSetAll={setSubsystems}
+                  context={{
+                    rudderDegrees,
+                    linked: links[selectedBoat.id] !== "LOST",
+                    elapsedSeconds,
+                    legLabel: selectedMission
+                      ? `${selectedBoat.waypointIndex + 1} of ${selectedMission.waypoints.length}`
+                      : null,
+                    objectiveLabel: selectedMission?.objective?.label ?? null,
+                  }}
+                />
+
                 <div className="vessel-data">
                   <span>Heading</span>
                   <strong>{selectedBoat.headingDegrees.toFixed(0)}°</strong>

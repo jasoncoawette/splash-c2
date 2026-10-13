@@ -168,8 +168,18 @@ export function subsystemsOf(
   // thing a twin-screw readout is for.
   const baseRpm = speedRatio * FULL_AHEAD_RPM;
   const differential = (rudder / RUDDER_LIMIT) * baseRpm * 0.12;
-  const portRpm = Math.max(0, baseRpm + differential + wander(1, elapsedSeconds, 18));
-  const starboardRpm = Math.max(0, baseRpm - differential + wander(2, elapsedSeconds, 18));
+  // The wander is small on purpose: it has to be visibly less than the
+  // differential, or the only thing a twin-screw readout is for — which shaft
+  // is taking the turn — would be buried in noise. It is also gated on the
+  // boat actually moving: a stopped hull reporting 6 rpm reads as a fault in
+  // the readout rather than as a stopped boat.
+  const turning = baseRpm > 0;
+  const portRpm = turning
+    ? Math.max(0, baseRpm + differential + wander(1, elapsedSeconds, 8))
+    : 0;
+  const starboardRpm = turning
+    ? Math.max(0, baseRpm - differential + wander(2, elapsedSeconds, 8))
+    : 0;
 
   parts.push({
     id: "DRIVE",
@@ -218,7 +228,10 @@ export function subsystemsOf(
   parts.push({
     id: "POWER",
     label: "Power",
-    partIds: ["hull"],
+    // No parts: the battery is under the deck and the drawing does not contain
+    // it. Lighting up the hull outline would say the hull is the thing being
+    // reported on, so the pin carries this one on its own.
+    partIds: [],
     anchor: { y: station(spec, 0.3), z: spec.deckM * 0.3 },
     status: state.energyPercent < 20 ? "DEGRADED" : working ? "ACTIVE" : "NOMINAL",
     summary: state.energyPercent < 20
@@ -338,7 +351,8 @@ export function subsystemsOf(
   parts.push({
     id: "NAV",
     label: "Navigation",
-    partIds: ["deck", "station-9"],
+    // As with POWER: the drawing has no antenna forward to light.
+    partIds: [],
     anchor: { y: station(spec, 0.9), z: spec.deckM * 1.15 },
     status: linked ? (state.missionId === null ? "NOMINAL" : "ACTIVE") : "DEGRADED",
     summary: legLabel === null
