@@ -1,0 +1,632 @@
+/* The helm screen: the hull is the subject, its numbers sit over the top left,
+   and the chart is a corner readout. Namespaced .helm-screen / .ego-* classes,
+   so the panels keep their own styling from globals.css. */
+
+.helm-screen {
+  position: relative;
+  display: grid;
+  flex: 1;
+  grid-template-areas:
+    "stage"
+    "dock";
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  background: #04090d;
+}
+
+.helm-stage {
+  position: relative;
+  grid-area: stage;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* -- the three dimensional stage ------------------------------------------- */
+
+.ego-view,
+.ego-canvas,
+.ego-labels {
+  position: absolute;
+  inset: 0;
+}
+
+/* Sky behind the scene, so the horizon has something to sit against. */
+.ego-view {
+  isolation: isolate;
+  background: linear-gradient(#0a2130 0%, #0a1b26 38%, #061018 52%, #03080c 100%);
+}
+
+.ego-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.ego-labels {
+  pointer-events: none;
+}
+
+.ego-contact {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 2px 7px;
+  border: 1px solid rgba(82, 203, 255, 0.45);
+  border-radius: 3px;
+  background: rgb(var(--deep-rgb) / 0.82);
+  color: var(--foreground);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.ego-contact::after {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 1px;
+  height: 8px;
+  background: currentColor;
+  content: "";
+  opacity: 0.45;
+}
+
+.ego-contact[data-visible="false"] {
+  display: none;
+}
+
+.ego-mode {
+  position: absolute;
+  bottom: 86px;
+  left: 50%;
+  padding: 4px 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgb(var(--deep-rgb) / 0.8);
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  transform: translateX(-50%);
+}
+
+.ego-mode.is-live {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* -- the cluster: mode, name, speed with charge beside it, then the derived
+   readouts. Ordered the way an operator reads it: what is flying the boat,
+   which boat, how fast, and what it will do if asked to turn. -------------- */
+
+.helm-cluster {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  display: grid;
+  gap: 10px;
+  justify-items: start;
+  font-family: var(--font-chakra-petch), sans-serif;
+  pointer-events: none;
+}
+
+/* The drive mode, loud, because it answers "who is steering". */
+.helm-mode {
+  padding: 5px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: rgb(82 203 255 / 0.16);
+  color: var(--accent);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.helm-mode.is-manual {
+  border-color: #ffb45a;
+  background: rgb(255 180 90 / 0.18);
+  color: #ffb45a;
+}
+
+.helm-name {
+  display: grid;
+  gap: 2px;
+}
+
+.helm-name strong {
+  color: var(--foreground);
+  font-size: 0.9rem;
+  letter-spacing: 0.03em;
+}
+
+.helm-name span {
+  color: var(--muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.helm-readout {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.helm-speed {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.helm-speed strong {
+  color: var(--foreground);
+  font-size: 3.2rem;
+  font-weight: 600;
+  line-height: 0.9;
+  letter-spacing: -0.02em;
+}
+
+.helm-speed span {
+  color: var(--muted);
+  font-size: 0.6rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.helm-battery {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.helm-battery svg {
+  width: 30px;
+  height: 17px;
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 1.2;
+}
+
+.helm-battery-fill {
+  fill: var(--success);
+  stroke: none;
+}
+
+.helm-battery-fill[data-low="true"] {
+  fill: #ff8a8a;
+}
+
+.helm-battery em {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-style: normal;
+  letter-spacing: 0.08em;
+}
+
+/* Derived, not measured: the ledger records both as demo assumptions. */
+.helm-derived {
+  display: flex;
+  gap: 18px;
+  margin: 0;
+}
+
+.helm-derived div {
+  display: grid;
+  gap: 2px;
+}
+
+.helm-derived dt {
+  color: var(--muted);
+  font-size: 0.52rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.helm-derived dd {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+
+/* The leg card, where a car would name the next turn. */
+.helm-leg {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  display: grid;
+  gap: 2px;
+  padding: 8px 16px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgb(var(--deep-rgb) / 0.86);
+  text-align: center;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.helm-leg strong {
+  color: var(--foreground);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
+.helm-leg span {
+  color: var(--muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+}
+
+.helm-stage .heading-tape {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+}
+
+/* -- the corner chart and the panels under it ------------------------------ */
+
+.helm-side {
+  position: absolute;
+  z-index: 5;
+  top: 14px;
+  right: 14px;
+  display: grid;
+  width: clamp(250px, 24vw, 340px);
+  gap: 8px;
+  pointer-events: none;
+}
+
+.helm-map {
+  position: relative;
+  height: clamp(150px, 21vh, 220px);
+  overflow: hidden;
+  border: 1px solid rgb(82 203 255 / 0.22);
+  border-radius: 8px;
+  background: rgb(var(--deep-rgb) / 0.42);
+  /* It carries depth, relief and live traffic now, so it is read rather than
+     glanced at: dimming it to 0.8 was fine for a bare basemap and muddies a
+     chart. */
+  opacity: 0.94;
+  box-shadow: 0 12px 34px rgb(0 0 0 / 0.18);
+}
+
+.helm-map-canvas {
+  position: absolute;
+  inset: 0;
+  /* A readout, by design: it must never take a gesture meant for the stage,
+     and the objective area it now draws carries a hover tip on the fleet chart
+     that has no business opening over the helm. */
+  pointer-events: none;
+}
+
+/* Own ship, fixed at the centre of a course-up chart. */
+.helm-map-own {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-right: 6px solid transparent;
+  border-bottom: 15px solid var(--accent);
+  border-left: 6px solid transparent;
+  transform: translate(-50%, -60%);
+}
+
+.helm-map-rose {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: grid;
+  justify-items: center;
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  transform-origin: center;
+}
+
+.helm-map-rose svg {
+  width: 16px;
+  height: 16px;
+  fill: var(--accent);
+  opacity: 0.85;
+}
+
+.helm-ballast {
+  display: grid;
+  gap: 7px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgb(var(--panel-rgb) / 0.62);
+  backdrop-filter: blur(12px);
+}
+
+.helm-ballast header,
+.helm-ballast-values {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.helm-ballast header span,
+.helm-ballast-values {
+  color: var(--muted);
+  font-size: 0.58rem;
+  text-transform: uppercase;
+}
+
+.helm-ballast header strong {
+  color: #35d6ad;
+  font-size: 0.58rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.helm-ballast-tanks {
+  display: grid;
+  grid-template-columns: 1fr 3px 1fr;
+  height: 28px;
+  gap: 7px;
+  align-items: end;
+}
+
+.helm-ballast-tank {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  border: 1px solid rgb(82 203 255 / 0.24);
+  border-radius: 3px;
+  background: rgb(var(--deep-rgb) / 0.48);
+}
+
+.helm-ballast-tank i {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  min-height: 2px;
+  background: linear-gradient(90deg, rgb(53 214 173 / 0.45), rgb(53 214 173 / 0.8));
+}
+
+.helm-ballast-keel {
+  height: 65%;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+/* -- the action strip ------------------------------------------------------ */
+
+.helm-dock {
+  display: flex;
+  grid-area: dock;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--line);
+  background: rgb(var(--surface-rgb) / 0.92);
+}
+
+/* Camera stations. Four places to stand, not four settings to configure. */
+.helm-cams {
+  position: absolute;
+  bottom: 92px;
+  left: 20px;
+  display: flex;
+  gap: 4px;
+}
+
+.helm-cam {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgb(var(--deep-rgb) / 0.78);
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.56rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.helm-cam:hover {
+  border-color: rgba(82, 203, 255, 0.5);
+  color: var(--foreground);
+}
+
+.helm-cam.is-active {
+  border-color: var(--accent);
+  background: rgba(82, 203, 255, 0.14);
+  color: var(--accent);
+}
+
+/* THE EDGE OF THE FIELD OF VIEW
+ *
+ * What the boat senses is sharp in the middle and uncertain at the periphery,
+ * so the stage blurs and fades outward. The blur is a real backdrop filter
+ * masked to the edges, not a painted gradient: the scene underneath keeps
+ * moving through it.
+ */
+.ego-field {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  backdrop-filter: blur(6px);
+  pointer-events: none;
+  mask-image: radial-gradient(
+    ellipse 82% 78% at 50% 66%,
+    transparent 58%,
+    rgba(0, 0, 0, 0.5) 78%,
+    #000 100%
+  );
+}
+
+.ego-fade {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      ellipse 86% 80% at 50% 66%,
+      transparent 62%,
+      rgb(var(--deep-rgb) / 0.35) 84%,
+      rgb(var(--deep-rgb) / 0.8) 100%
+    );
+}
+
+
+/* -- light mode ------------------------------------------------------------ */
+
+:root[data-theme="light"] .helm-screen {
+  background: #e8eff4;
+}
+
+:root[data-theme="light"] .ego-view {
+  background: linear-gradient(#cfe4f2 0%, #dbe9f1 42%, #e7eff4 54%, #eef3f6 100%);
+}
+
+:root[data-theme="light"] .ego-contact,
+:root[data-theme="light"] .ego-mode {
+  background: rgb(255 255 255 / 0.86);
+  color: #123243;
+}
+
+/* The helm's floating cards follow the same rule: lift in daylight, flat at
+   night. The stage itself never casts — it is a view, not a surface. */
+:root[data-theme="light"] .helm-map,
+:root[data-theme="light"] .helm-ballast {
+  border-color: rgb(0 0 0 / 0.07);
+  background: rgb(var(--panel-rgb) / 0.96);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.06),
+    0 8px 28px rgb(0 0 0 / 0.10);
+}
+
+:root[data-theme="light"] .helm-ballast header strong {
+  color: #087f73;
+}
+
+:root[data-theme="light"] .helm-leg {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.07),
+    0 10px 26px rgb(0 0 0 / 0.12);
+}
+
+:root[data-theme="light"] .helm-speed strong,
+:root[data-theme="light"] .helm-name strong {
+  font-weight: 500;
+}
+
+:root[data-theme="light"] .helm-mode {
+  font-weight: 500;
+  letter-spacing: 0.2em;
+}
+
+/* Labels on a daylit sea need a light plate, not a dark one. */
+:root[data-theme="light"] .ego-contact {
+  border-color: rgb(31 92 122 / 0.35);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.12);
+}
+
+/* The route lane's sea is painted dark in globals.css; in daylight it needs to
+   be the same water as the stage beside it, not a night panel inside a day one. */
+:root[data-theme="light"] .route-lane {
+  background:
+    radial-gradient(ellipse at 50% 100%, rgb(31 92 122 / 0.08), transparent 62%),
+    #e7eff4;
+}
+
+:root[data-theme="light"] .route-horizon {
+  stroke: rgb(31 92 122 / 0.35);
+}
+
+/* Mission progress sits with the leg, because both answer the same question:
+   how far through this run are we. */
+.helm-leg-progress {
+  display: block;
+  width: 100%;
+  height: 2px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--line);
+}
+
+.helm-leg-progress > span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 0.4s ease;
+}
+
+/* -- taking the helm ------------------------------------------------------- *
+ * Manual control is a transfer, not a setting: it stops the boat working its
+ * route, so it is confirmed against the hull it affects by name. */
+
+.helm-confirm {
+  position: absolute;
+  z-index: 20;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(var(--deep-rgb) / 0.62);
+  backdrop-filter: blur(6px);
+}
+
+.helm-confirm-card {
+  display: grid;
+  width: min(420px, calc(100% - 48px));
+  gap: 10px;
+  padding: 22px 24px 18px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgb(var(--panel-rgb) / 0.98);
+}
+
+.helm-confirm-mark {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 1px solid #ffb45a;
+  border-radius: 50%;
+  color: #ffb45a;
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.9rem;
+}
+
+.helm-confirm-card h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 1rem;
+  letter-spacing: 0.02em;
+}
+
+.helm-confirm-card p:last-of-type {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.6;
+}
+
+.helm-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+:root[data-theme="light"] .helm-confirm-card {
+  box-shadow:
+    0 2px 6px rgb(0 0 0 / 0.08),
+    0 18px 48px rgb(0 0 0 / 0.16);
+}

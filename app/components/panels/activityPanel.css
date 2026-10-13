@@ -1,0 +1,251 @@
+/* THE ACTIVITY WINDOW
+ *
+ * Sits under the fleet list, on the same left edge and at the same width, so
+ * "what I own" and "what it is doing" read as one column rather than as two
+ * unrelated windows. It travels with the fleet panel: collapsing that panel
+ * clears the chart, which is the whole point of the one control.
+ */
+
+.activity {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.activity-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px 9px;
+  border-bottom: 1px solid var(--line);
+}
+
+.activity-title h2 {
+  margin: 0;
+  color: var(--foreground);
+  font-family: var(--font-brand), var(--font-sans), sans-serif;
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.activity-title span {
+  display: block;
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
+}
+
+.activity-measure {
+  display: flex;
+  min-width: 64px;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.activity-measure strong {
+  color: var(--accent);
+  font-size: 0.95rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.activity-measure strong em {
+  margin-left: 1px;
+  color: var(--muted);
+  font-size: 0.5rem;
+  font-style: normal;
+}
+
+.activity-measure-track {
+  display: block;
+  width: 58px;
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(var(--deep-rgb) / 0.65);
+}
+
+:root[data-theme="light"] .activity-measure-track,
+:root[data-theme="light"] .activity-progress {
+  background: rgb(20 54 70 / 0.1);
+}
+
+.activity-measure-track i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 240ms ease;
+}
+
+.activity-empty {
+  margin: 0;
+  padding: 12px 14px;
+  color: var(--muted);
+  font-size: 0.58rem;
+}
+
+.activity-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.activity-list > li + li {
+  border-top: 1px solid rgb(var(--raised-rgb) / 0.9);
+}
+
+.activity-row {
+  display: grid;
+  width: 100%;
+  padding: 8px 14px;
+  border: 0;
+  border-left: 2px solid transparent;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  gap: 9px;
+  grid-template-columns: 7px minmax(0, 1fr);
+  letter-spacing: normal;
+  text-align: left;
+  text-transform: none;
+  transition: background 140ms ease;
+}
+
+.activity-row:hover {
+  background: rgb(var(--raised-rgb) / 0.75);
+}
+
+.activity-row:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.activity-row.is-selected {
+  border-left-color: var(--accent);
+  background: rgb(82 203 255 / 0.07);
+}
+
+/* One dot per state, in the colour that state already owns elsewhere in the
+   console: cyan is working, orange is waiting, red is a fault. */
+.activity-kind {
+  width: 7px;
+  height: 7px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.activity-row.is-moving .activity-kind {
+  background: var(--accent);
+  box-shadow: 0 0 6px rgb(82 203 255 / 0.55);
+}
+
+.activity-row.is-manual .activity-kind {
+  background: var(--success);
+}
+
+.activity-row.is-holding .activity-kind {
+  background: var(--warn);
+}
+
+.activity-row.is-fault .activity-kind {
+  background: var(--danger);
+  box-shadow: 0 0 7px rgb(var(--danger-rgb) / 0.6);
+}
+
+.activity-body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.activity-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.activity-line strong {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-line em {
+  color: var(--muted);
+  font-size: 0.56rem;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.activity-work {
+  overflow: hidden;
+  color: var(--accent);
+  font-size: 0.58rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-row.is-idle .activity-work,
+.activity-row.is-holding .activity-work {
+  color: var(--muted);
+}
+
+.activity-row.is-fault .activity-work {
+  color: var(--danger);
+}
+
+.activity-where {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.53rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.04em;
+}
+
+.activity-progress {
+  display: block;
+  height: 2px;
+  margin-top: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(var(--deep-rgb) / 0.65);
+}
+
+.activity-progress i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 240ms ease;
+}
+
+.activity-row.is-fault .activity-progress i {
+  background: var(--danger);
+}
+
+.activity-row.is-holding .activity-progress i {
+  background: var(--warn);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .activity-measure-track i,
+  .activity-progress i {
+    transition: none;
+  }
+}

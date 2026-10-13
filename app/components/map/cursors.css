@@ -1,0 +1,46 @@
+/* CURSORS
+ *
+ * The cursor reports what a press would do, and nothing else. At rest the chart
+ * is an arrow, because standing still is not an action. The grab cursor appears
+ * only while something is actually being dragged, and it is set on the document
+ * so it survives the pointer leaving the element it started on — a drag that
+ * changes cursor halfway across the screen reads as a dropped drag.
+ */
+
+/* Mapbox ships a permanent grab hand on the canvas. The chart is a workspace,
+   not a thing you are always holding. */
+.mapboxgl-canvas-container.mapboxgl-interactive,
+.mapboxgl-canvas-container.mapboxgl-interactive .mapboxgl-canvas {
+  cursor: default;
+}
+
+/* A placement tool is armed: the press will put something down. */
+[data-chart-cursor="place"] .mapboxgl-canvas-container.mapboxgl-interactive,
+[data-chart-cursor="place"] .mapboxgl-canvas-container.mapboxgl-interactive .mapboxgl-canvas,
+[data-chart-cursor="place"] .fleet-drag-handle {
+  cursor: crosshair;
+}
+
+/* Over live traffic: a contact is pickable under every tool, including the
+   placement ones, so this rule comes after the crosshair and wins. */
+[data-chart-hover="contact"] .mapboxgl-canvas-container.mapboxgl-interactive,
+[data-chart-hover="contact"] .mapboxgl-canvas-container.mapboxgl-interactive .mapboxgl-canvas {
+  cursor: pointer;
+}
+
+/* Hulls and the group grip are targets, not handles: arrow until taken. */
+.fleet-drag-handle,
+.fleet-graph-grip {
+  cursor: default;
+}
+
+/* While a drag runs, every element under the pointer agrees with it. */
+body[data-chart-drag="drag"],
+body[data-chart-drag="drag"] * {
+  cursor: grabbing !important;
+}
+
+body[data-chart-drag="marquee"],
+body[data-chart-drag="marquee"] * {
+  cursor: crosshair !important;
+}

@@ -1,0 +1,400 @@
+/* THE SYSTEMS DRAWING
+ *
+ * One side elevation with a pin on every fitted part, and a telemetry window
+ * for each pin the operator opens. The drawing is generated from the vessel
+ * spec, so the pins land on the geometry rather than on hand-placed pixels.
+ *
+ * Namespaced `vsys-` throughout. Nothing here styles a shared class: the
+ * schematic sits inside the vessel panel, and a bare `.window` or `.pin` from
+ * this file would reach into every other surface that opened beside it.
+ */
+
+.vsys {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 4px;
+}
+
+.vsys-head {
+  display: grid;
+  align-items: center;
+  gap: 2px 10px;
+  grid-template-areas:
+    "title action"
+    "meta action";
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.vsys-head h2 {
+  margin: 0;
+  grid-area: title;
+  color: var(--foreground);
+  font-family: var(--font-brand), var(--font-sans), sans-serif;
+  font-size: 0.74rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.vsys-head p {
+  display: flex;
+  gap: 10px;
+  margin: 0;
+  grid-area: meta;
+  color: var(--muted);
+  font-size: 0.56rem;
+  letter-spacing: 0.08em;
+}
+
+.vsys-head p span + span::before {
+  margin-right: 10px;
+  content: "·";
+}
+
+.vsys-head p .is-fault {
+  color: var(--danger);
+}
+
+.vsys-head button {
+  grid-area: action;
+  min-height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-family: var(--font-brand), var(--font-sans), sans-serif;
+  font-size: 0.54rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vsys-head button:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* -- the drawing, with the pins over it ----------------------------------- */
+
+.vsys-stage {
+  position: relative;
+  padding: 2px 0;
+}
+
+.vsys-drawing {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* Stroke weights are in metres, so `non-scaling-stroke` holds them at a
+   constant screen width whatever the class being drawn. */
+.vsys-outline,
+.vsys-detail,
+.vsys-construction {
+  fill: none;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.vsys-outline {
+  stroke: var(--foreground);
+  stroke-width: 1.3;
+  opacity: 0.8;
+}
+
+.vsys-detail {
+  stroke: var(--foreground);
+  stroke-width: 0.9;
+  opacity: 0.45;
+}
+
+.vsys-construction {
+  stroke: var(--muted);
+  stroke-dasharray: 2 4;
+  stroke-width: 0.6;
+  opacity: 0.22;
+}
+
+/* A part with its window open is the lit thing in the drawing. */
+.vsys-outline.is-live,
+.vsys-detail.is-live {
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  opacity: 1;
+}
+
+.vsys-construction.is-live {
+  stroke: var(--accent);
+  opacity: 0.5;
+}
+
+.vsys-pin {
+  position: absolute;
+  display: grid;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  place-items: center;
+  transform: translate(-50%, -50%);
+}
+
+/* The hit area is the button; the dot is what you see. */
+.vsys-pin > span {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--muted);
+  border-radius: 50%;
+  background: rgb(var(--panel-rgb) / 0.9);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.vsys-pin:hover > span {
+  transform: scale(1.25);
+}
+
+.vsys-pin:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 0;
+  border-radius: 50%;
+}
+
+/* Status is carried by the pin, so a part that needs attention says so before
+   anything is opened. */
+.vsys-pin.is-active > span {
+  border-color: var(--accent);
+  box-shadow: 0 0 6px rgb(82 203 255 / 0.5);
+}
+
+.vsys-pin.is-nominal > span {
+  border-color: var(--success);
+}
+
+.vsys-pin.is-standby > span {
+  border-color: var(--muted);
+}
+
+.vsys-pin.is-degraded > span {
+  border-color: var(--warn);
+  box-shadow: 0 0 6px rgb(227 167 101 / 0.5);
+}
+
+.vsys-pin.is-offline > span {
+  border-color: var(--danger);
+  background: rgb(var(--danger-rgb) / 0.35);
+}
+
+.vsys-pin.is-open > span {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.vsys-pin.is-open.is-offline > span {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.vsys-pin.is-open.is-degraded > span {
+  background: var(--warn);
+  border-color: var(--warn);
+}
+
+/* -- the windows ----------------------------------------------------------- */
+
+.vsys-empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+}
+
+.vsys-windows {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.vsys-window {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 9px;
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  border-radius: 5px;
+  background: rgb(var(--raised-rgb) / 0.75);
+}
+
+.vsys-window.is-offline {
+  border-left-color: var(--danger);
+}
+
+.vsys-window.is-degraded {
+  border-left-color: var(--warn);
+}
+
+.vsys-window.is-standby,
+.vsys-window.is-nominal {
+  border-left-color: var(--muted);
+}
+
+.vsys-window header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vsys-window h3 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vsys-status {
+  color: var(--muted);
+  font-family: var(--font-brand), var(--font-sans), sans-serif;
+  font-size: 0.5rem;
+  letter-spacing: 0.12em;
+}
+
+.vsys-window.is-active .vsys-status {
+  color: var(--accent);
+}
+
+.vsys-window.is-degraded .vsys-status {
+  color: var(--warn);
+}
+
+.vsys-window.is-offline .vsys-status {
+  color: var(--danger);
+}
+
+.vsys-window header button {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.vsys-window header button:hover {
+  color: var(--foreground);
+}
+
+.vsys-summary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.58rem;
+  letter-spacing: 0.02em;
+  line-height: 1.45;
+}
+
+.vsys-load {
+  height: 2px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgb(var(--deep-rgb) / 0.6);
+}
+
+:root[data-theme="light"] .vsys-load {
+  background: rgb(20 54 70 / 0.1);
+}
+
+.vsys-load > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 220ms ease;
+}
+
+.vsys-window.is-degraded .vsys-load > span {
+  background: var(--warn);
+}
+
+.vsys-window.is-offline .vsys-load > span {
+  background: var(--danger);
+}
+
+.vsys-channels {
+  display: grid;
+  gap: 4px 10px;
+  margin: 0;
+  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+}
+
+.vsys-channels div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.vsys-channels dt {
+  color: var(--muted);
+  font-size: 0.5rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vsys-channels dd {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  margin: 0;
+  color: var(--foreground);
+  font-size: 0.68rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Per-channel, because one window can mix a measured number with a derived
+   one and the operator has to be able to tell which is which. */
+.vsys-channels dd em {
+  color: var(--muted);
+  font-size: 0.46rem;
+  font-style: normal;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+  text-transform: uppercase;
+}
+
+.vsys-caveat {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-brand), var(--font-sans), sans-serif;
+  font-size: 0.46rem;
+  letter-spacing: 0.12em;
+  opacity: 0.75;
+}
+
+/* The vessel panel has to be able to scroll now: eight open windows are taller
+   than the panel, and a fixed body would clip the last of them. */
+.vessel-detail .detail-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vsys-pin > span,
+  .vsys-load > span {
+    transition: none;
+  }
+}

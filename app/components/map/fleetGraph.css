@@ -1,0 +1,155 @@
+/* The group overlay: links from a draggable group anchor to every selected
+   hull, drawn over the chart. Only the anchor takes pointer events; the links
+   and nodes are decoration. Class names are namespaced and set from
+   fleetGraph.ts, which builds this overlay outside React. */
+
+/* The graph is decoration over a working chart: nothing in it may swallow a
+   press except its own grip. Spokes, labels and the anchor ring all sit on
+   points the chart has handles of its own at. */
+.fleet-graph,
+.fleet-graph * {
+  pointer-events: none;
+}
+
+.fleet-graph {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  overflow: visible;
+}
+
+.fleet-graph[data-visible="false"] {
+  display: none;
+}
+
+.fleet-graph-edge {
+  fill: none;
+  stroke: var(--accent);
+  stroke-dasharray: 5 7;
+  stroke-linecap: round;
+  stroke-opacity: 0.45;
+  stroke-width: 1.1;
+}
+
+.fleet-graph[data-active="true"] .fleet-graph-edge {
+  animation: fleet-graph-flow 0.9s linear infinite;
+  stroke-opacity: 0.85;
+  stroke-width: 1.4;
+}
+
+@keyframes fleet-graph-flow {
+  to {
+    stroke-dashoffset: -12;
+  }
+}
+
+.fleet-graph-node {
+  fill: rgb(var(--surface-rgb) / 0.85);
+  stroke: var(--accent);
+  stroke-opacity: 0.75;
+  stroke-width: 1.1;
+}
+
+.fleet-graph[data-active="true"] .fleet-graph-node {
+  fill: rgba(82, 203, 255, 0.22);
+  stroke-opacity: 1;
+}
+
+/* The group's drag control: the one interactive part, held clear of the
+   anchor so the objective and any perimeter handle under it stay reachable. */
+.fleet-graph-grip,
+.fleet-graph-grip * {
+  pointer-events: auto;
+}
+
+.fleet-graph-grip-hit {
+  fill: transparent;
+}
+
+.fleet-graph-grip-ring {
+  fill: rgb(var(--surface-rgb) / 0.9);
+  stroke: var(--accent);
+  stroke-opacity: 0.7;
+  stroke-width: 1.2;
+}
+
+.fleet-graph-grip:hover .fleet-graph-grip-ring,
+.fleet-graph[data-active="true"] .fleet-graph-grip-ring {
+  fill: rgba(82, 203, 255, 0.18);
+  stroke-opacity: 1;
+}
+
+.fleet-graph-grip-glyph {
+  fill: none;
+  stroke: var(--accent);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-opacity: 0.85;
+  stroke-width: 1.2;
+}
+
+.fleet-graph-hub-ring {
+  fill: rgb(var(--surface-rgb) / 0.72);
+  stroke: var(--accent);
+  stroke-opacity: 0.8;
+  stroke-width: 1.2;
+}
+
+.fleet-graph[data-active="true"] .fleet-graph-hub-ring {
+  fill: rgba(82, 203, 255, 0.16);
+  stroke-opacity: 1;
+}
+
+.fleet-graph-hub-dot {
+  fill: var(--accent);
+}
+
+.fleet-graph-hub-tick {
+  stroke: var(--accent);
+  stroke-opacity: 0.7;
+  stroke-width: 1.2;
+}
+
+.fleet-graph-hub-count,
+.fleet-graph-readout {
+  font-family: var(--font-chakra-petch), sans-serif;
+  letter-spacing: 0.1em;
+  paint-order: stroke;
+  stroke: rgb(var(--surface-rgb) / 0.9);
+  stroke-width: 3px;
+  text-anchor: middle;
+}
+
+.fleet-graph-hub-count {
+  fill: var(--foreground);
+  font-size: 9px;
+}
+
+.fleet-graph-readout {
+  fill: var(--accent);
+  font-size: 10px;
+}
+
+/* Shift-drag marquee over open water. */
+.fleet-marquee {
+  position: absolute;
+  z-index: 5;
+  border: 1px solid var(--accent);
+  background: rgba(82, 203, 255, 0.1);
+  pointer-events: none;
+}
+
+.fleet-marquee[data-visible="false"] {
+  display: none;
+}
+
+/* A marker's grab point. Its cursor is set in cursors.css, which owns every
+   cursor on the chart so the pointer never reports two things at once. */
+.fleet-drag-handle {
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.fleet-graph[data-active="true"] ~ .mapboxgl-marker .fleet-drag-handle {
+  cursor: grabbing;
+}

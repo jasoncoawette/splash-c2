@@ -1,0 +1,450 @@
+/* THE CONSOLE
+ *
+ * One chart with two floating panels: the fleet down the left, the selected
+ * vessel down the right. Each collapses on its own from the chart toolbar, and
+ * neither takes width from the chart — a panel opening must never move the
+ * water the operator is looking at.
+ */
+
+.console-stage {
+  /* One source for the panel width, because the handles have to sit against
+     whatever it is. */
+  --panel-w: min(330px, 28vw);
+  --panel-gap: 12px;
+  /* How far in from each edge the chart is actually visible. Anything anchored
+     to a position on the water reads these, so it cannot open underneath a
+     panel — invisible is worse than merely awkward. */
+  --chart-inset-left: 24px;
+  --chart-inset-right: 24px;
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+
+.console-chart {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+}
+
+.shell-panel {
+  position: absolute;
+  z-index: 8;
+  top: 12px;
+  bottom: 12px;
+  display: flex;
+  width: var(--panel-w);
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgb(var(--panel-rgb) / 0.92);
+  backdrop-filter: blur(14px);
+}
+
+.shell-panel.is-fleet {
+  left: 12px;
+}
+
+/* The vessel panel hugs what it holds. The fleet panel is a list with a footer
+   and earns the full column; this one is a fixed handful of rows, and stretching
+   it to the floor only manufactured the void the actions were pinned across.
+   It still scrolls if a vessel ever has more to say than the window has room
+   for. */
+.shell-panel.is-detail {
+  padding: 4px;
+  right: 12px;
+  bottom: auto;
+  max-height: calc(100% - 24px);
+}
+
+/* Bounded, never auto: the lists inside scroll rather than growing the panel. */
+.shell-panel > * {
+  min-width: 0;
+  min-height: 0;
+}
+
+.shell-panel .fleet-panel,
+.shell-panel .vessel-detail {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+  border: 0;
+  background: transparent;
+}
+
+/* -- vessel list: one row per hull, the way the reference reads ------------ */
+
+/* The list is the part that grows; everything else in the column is fixed, so
+   the hulls scroll inside the panel instead of being squeezed out of it. */
+.shell-panel .boat-grid {
+  flex: 1 1 auto;
+  min-height: 72px;
+  overflow-y: auto;
+}
+
+.shell-panel .create-group,
+.shell-panel .selected-vessel,
+.shell-panel .panel-heading {
+  flex: none;
+}
+
+.shell-panel .panel-heading {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--line);
+  background: rgb(var(--panel-rgb) / 0.92);
+}
+
+.shell-panel .boat-grid {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+  padding: 10px;
+}
+
+.shell-panel .boat-card {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-left-width: 1px;
+  border-radius: 5px;
+  background: rgb(var(--surface-rgb) / 0.82);
+  box-shadow: none;
+}
+
+.shell-panel .boat-card.is-grouped:not(.is-selected) {
+  border-color: rgba(82, 203, 255, 0.34);
+}
+
+.shell-panel .boat-card.is-selected {
+  border-color: var(--accent);
+  background: rgba(82, 203, 255, 0.09);
+  box-shadow: none;
+}
+
+.shell-panel .boat-card-index {
+  color: var(--muted);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+}
+
+.shell-panel .boat-card.is-selected .boat-card-index {
+  color: var(--accent);
+}
+
+.shell-panel .boat-card-main strong {
+  font-size: 0.82rem;
+  letter-spacing: 0.01em;
+}
+
+.shell-panel .boat-card-main > span {
+  color: var(--muted);
+  font-size: 0.62rem;
+  letter-spacing: 0.07em;
+}
+
+.shell-panel .boat-card-meta {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 0.57rem;
+  letter-spacing: 0.09em;
+}
+
+.shell-panel .boat-card-class {
+  padding: 2px 5px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  color: var(--accent);
+}
+
+/* Vessel creation belongs at the end of the list it adds to, not in the
+   command bar: the reference puts "add" under the things it adds. */
+.shell-panel .create-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  padding: 0 10px 12px;
+}
+
+.shell-panel .create-boat {
+  justify-content: center;
+  width: 100%;
+  border-style: dashed;
+}
+
+/* -- narrow docks: the bar reflows from a wide band into a column ---------- */
+
+.dock-stage[data-side="left"] .shell-panel .fleet-bar-body,
+.dock-stage[data-side="right"] .shell-panel .fleet-bar-body {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  padding: 12px;
+  overflow-y: auto;
+}
+
+.dock-stage[data-side="left"] .shell-panel .mission-tile-grid,
+.dock-stage[data-side="right"] .shell-panel .mission-tile-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.dock-stage[data-side="left"] .shell-panel .mission-tiles-head,
+.dock-stage[data-side="right"] .shell-panel .mission-tiles-head {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+
+/* Creating a vessel is the list's footer, so it sits on its own ground rather
+   than floating over the last card as it scrolls past. */
+.shell-panel .create-group {
+  border-top: 1px solid var(--line);
+  background: rgb(var(--panel-rgb) / 0.96);
+  padding-top: 10px;
+}
+
+.shell-panel .dock-hint {
+  flex: none;
+  padding: 8px 14px 10px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  line-height: 1.5;
+}
+
+.shell-panel .dock-status {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+}
+
+.shell-panel .dock-status span + span {
+  padding-left: 10px;
+  border-left: 1px solid var(--line);
+}
+
+/* Order feedback belongs to the chart, not to the panel: it has to be readable
+   when every window is collapsed. */
+.console-notice {
+  position: absolute;
+  z-index: 9;
+  top: 14px;
+  left: 50%;
+  padding: 7px 14px;
+  border: 1px solid rgba(214, 80, 80, 0.55);
+  border-radius: 999px;
+  background: rgb(var(--deep-rgb) / 0.94);
+  color: #ffb4b4;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+  transform: translateX(-50%);
+}
+
+/* -- the registry reads as a fleet, not a table ---------------------------- */
+
+.shell-panel .panel-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.shell-panel .panel-mark {
+  display: block;
+  width: 20px;
+  height: 46px;
+  flex: none;
+  color: var(--accent);
+  opacity: 0.85;
+}
+
+.shell-panel .panel-title h1 {
+  font-size: 1.1rem;
+  letter-spacing: 0.02em;
+}
+
+/* Each create button carries the hull it adds. */
+.shell-panel .create-boat {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: center;
+  justify-content: start;
+  gap: 10px;
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.shell-panel .create-boat-hull {
+  display: block;
+  width: 18px;
+  height: 38px;
+}
+
+.shell-panel .create-boat-label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.shell-panel .create-boat-label em {
+  font-style: normal;
+  opacity: 0.7;
+}
+
+:root[data-theme="light"] .console-notice {
+  border-color: rgba(163, 32, 32, 0.5);
+  color: #a32020;
+}
+
+/* PANEL HANDLES
+ *
+ * One per panel, mounted on the screen edge it belongs to rather than in the
+ * chart toolbar. The handle travels with its panel: against the panel's inner
+ * edge when open, flat against the screen edge when closed, so the control that
+ * closes a panel is always touching the panel it closes.
+ */
+.console-handle {
+  position: absolute;
+  z-index: 9;
+  top: 50%;
+  display: grid;
+  width: 20px;
+  height: 58px;
+  padding: 0;
+  border: 1px solid var(--line);
+  background: rgb(var(--panel-rgb) / 0.92);
+  color: var(--muted);
+  cursor: pointer;
+  place-items: center;
+  transform: translateY(-50%);
+  transition: left 180ms ease, right 180ms ease, color 140ms ease;
+  backdrop-filter: blur(14px);
+}
+
+.console-handle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.console-handle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.console-handle svg {
+  width: 12px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.console-handle.is-fleet {
+  left: 0;
+  border-left: 0;
+  border-radius: 0 7px 7px 0;
+}
+
+.console-handle.is-detail {
+  right: 0;
+  border-right: 0;
+  border-radius: 7px 0 0 7px;
+}
+
+/* Open: stand off the panel's inner edge. */
+.console-stage[data-fleet-open="true"] .console-handle.is-fleet {
+  left: calc(var(--panel-gap) + var(--panel-w));
+}
+
+.console-stage[data-detail-open="true"] .console-handle.is-detail {
+  right: calc(var(--panel-gap) + var(--panel-w));
+}
+
+/* The chevron points the way the panel will travel, so the control says what
+   it does rather than what it is. The path is drawn pointing left; each state
+   decides whether to mirror it. */
+.console-handle.is-fleet svg {
+  transform: scaleX(-1);
+}
+
+.console-stage[data-fleet-open="true"] .console-handle.is-fleet svg {
+  transform: scaleX(1);
+}
+
+.console-handle.is-detail svg {
+  transform: scaleX(1);
+}
+
+.console-stage[data-detail-open="true"] .console-handle.is-detail svg {
+  transform: scaleX(-1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .console-handle {
+    transition: none;
+  }
+}
+
+/* -- light mode: lift and loosen ------------------------------------------ *
+ *
+ * A panel on a pale chart needs to sit ABOVE it, so light mode gets a soft
+ * layered shadow — a tight contact shadow plus a wide ambient one, which is
+ * what makes a surface read as floating rather than as drawn on. Dark mode
+ * gets none at all: on a dark ground a shadow is either invisible or a smudge,
+ * and the border already does the separating.
+ *
+ * Text loosens with it. The same weights that read as crisp on dark read as
+ * heavy on light, so headings drop a step and tracking opens slightly.
+ */
+
+:root[data-theme="light"] .shell-panel {
+  border-color: rgb(0 0 0 / 0.07);
+  background: rgb(var(--panel-rgb) / 0.96);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.06),
+    0 8px 28px rgb(0 0 0 / 0.10);
+}
+
+:root[data-theme="light"] .console-notice {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.08),
+    0 10px 30px rgb(0 0 0 / 0.12);
+}
+
+:root[data-theme="light"] .shell-panel h1 {
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+:root[data-theme="light"] .shell-panel strong {
+  font-weight: 500;
+}
+
+:root[data-theme="light"] .shell-panel .dock-status,
+:root[data-theme="light"] .shell-panel .boat-card-meta {
+  letter-spacing: 0.1em;
+}
+
+.console-stage[data-fleet-open="true"] {
+  --chart-inset-left: calc(var(--panel-w) + 32px);
+}
+
+.console-stage[data-detail-open="true"] {
+  --chart-inset-right: calc(var(--panel-w) + 32px);
+}

@@ -1,0 +1,333 @@
+/* THE FLEET PANEL
+ *
+ * One card shape for everything the operator can point at. The row never
+ * changes layout between a vessel, a perimeter and a contact: mark, name,
+ * affiliation on the top line; what it carries and what it is called on the
+ * second. Learn it once, read the rest for free.
+ */
+
+.fleet-panel {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.fleet-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 16px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.fleet-panel-mark {
+  display: grid;
+  width: 26px;
+  height: 34px;
+  color: var(--accent);
+  place-items: center;
+}
+
+.fleet-panel-head h1 {
+  margin: 0;
+  color: var(--foreground);
+  font-family: var(--font-brand), var(--font-sans), sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.02em;
+}
+
+.fleet-panel-head p {
+  display: flex;
+  gap: 10px;
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.fleet-panel-head p span + span::before {
+  margin-right: 10px;
+  content: "·";
+}
+
+.fleet-panel-scroll {
+  flex: 1;
+  min-height: 0;
+  padding-bottom: 8px;
+  overflow-y: auto;
+}
+
+.entity-group {
+  margin: 14px 0 2px;
+  padding: 0 16px;
+  color: var(--muted);
+  font-size: 0.54rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.entity-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.entity-list > li + li {
+  border-top: 1px solid rgb(var(--raised-rgb) / 0.9);
+}
+
+/* The card. Two rows: identity, then what it carries. */
+.entity-card {
+  display: grid;
+  width: 100%;
+  padding: 11px 16px 10px;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  gap: 7px 11px;
+  grid-template-areas:
+    "glyph identity badge"
+    "footer footer footer";
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.entity-card:hover {
+  background: rgb(var(--raised-rgb) / 0.75);
+}
+
+.entity-card:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.entity-card.is-grouped {
+  border-left-color: rgb(82 203 255 / 0.45);
+}
+
+.entity-card.is-selected {
+  border-left-color: var(--accent);
+  background: rgb(82 203 255 / 0.08);
+}
+
+.entity-card.is-alert,
+.entity-card.is-alert.is-selected {
+  border-left-color: var(--danger);
+  background: rgb(var(--danger-rgb) / 0.09);
+}
+
+.entity-card.is-alert .entity-identity strong,
+.entity-card.is-alert .entity-identity span {
+  color: var(--danger);
+}
+
+.entity-glyph {
+  display: grid;
+  width: 28px;
+  height: 30px;
+  grid-area: glyph;
+  place-items: center;
+  color: var(--foreground);
+  opacity: 0.85;
+}
+
+.entity-glyph svg {
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.3;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.entity-identity {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+  grid-area: identity;
+}
+
+.entity-identity strong {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entity-identity span {
+  color: var(--muted);
+  font-size: 0.6rem;
+}
+
+/* Affiliation, as a chart symbol would show it. */
+.entity-badge {
+  display: grid;
+  width: 17px;
+  height: 17px;
+  align-self: start;
+  border-radius: 3px;
+  grid-area: badge;
+  place-items: center;
+  transform: rotate(45deg);
+}
+
+.entity-badge::after {
+  content: attr(data-label);
+  color: #061016;
+  font-size: 0.5rem;
+  font-weight: 700;
+  transform: rotate(-45deg);
+}
+
+.entity-badge.is-friendly {
+  background: var(--accent);
+}
+
+.entity-badge.is-traffic {
+  background: var(--warn);
+}
+
+/* A perimeter is an instruction, not a reading, so its badge wears the same
+   orange the ring on the chart does. */
+.entity-badge.is-zone {
+  background: #ff8c42;
+}
+
+.entity-badge.is-alert {
+  background: var(--danger);
+  box-shadow: 0 0 12px rgb(var(--danger-rgb) / 0.55);
+}
+
+.entity-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  grid-area: footer;
+}
+
+.entity-capabilities {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.entity-capability,
+.entity-action {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  place-items: center;
+}
+
+.entity-action {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.entity-action:hover {
+  color: var(--foreground);
+}
+
+.entity-capability svg,
+.entity-action svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.entity-reference {
+  color: var(--muted);
+  font-size: 0.53rem;
+  letter-spacing: 0.09em;
+  opacity: 0.8;
+}
+
+/* Add, at the bottom, where the reference puts it. */
+.fleet-panel-foot {
+  display: grid;
+  gap: 8px;
+  padding: 10px 16px 14px;
+  border-top: 1px solid var(--line);
+  grid-template-columns: 1fr 1fr;
+}
+
+.fleet-panel-foot button {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px dashed rgb(var(--line-rgb, 151 202 218) / 0.35);
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.64rem;
+  transition: color 140ms ease, border-color 140ms ease;
+}
+
+.fleet-panel-foot button:hover {
+  border-color: var(--accent);
+  border-style: solid;
+  color: var(--accent);
+}
+
+/* The marked search area, with the one order that acts on it. */
+.survey-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 16px 12px;
+}
+
+.survey-summary p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.survey-summary strong {
+  color: var(--foreground);
+  font-size: 0.9rem;
+}
+
+.survey-summary div {
+  display: flex;
+  gap: 8px;
+}
+
+.survey-summary button {
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.6rem;
+}
+
+.survey-summary button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.survey-summary .create-boat {
+  border-color: var(--accent);
+  color: var(--accent);
+}

@@ -1,0 +1,231 @@
+.operator-scenario {
+  position: absolute;
+  z-index: 9;
+  bottom: 14px;
+  left: calc((100% + var(--chart-inset-left) - var(--chart-inset-right)) / 2);
+  width: min(620px, calc(100% - var(--chart-inset-left) - var(--chart-inset-right) - 28px));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: rgb(var(--panel-rgb) / 0.94);
+  box-shadow: 0 18px 60px rgb(0 0 0 / 0.24);
+  transform: translateX(-50%);
+  backdrop-filter: blur(16px);
+}
+
+/* The step rail and the window controls share one row, so closing the coach
+   costs no extra height on the chart. */
+.scenario-bar {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--line);
+}
+
+.scenario-progress {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+  padding: 8px 12px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.scenario-progress > span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 0.54rem;
+  white-space: nowrap;
+}
+
+.scenario-progress i {
+  display: grid;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  font-style: normal;
+  place-items: center;
+}
+
+.scenario-progress .is-complete,
+.scenario-progress .is-current {
+  color: var(--foreground);
+}
+
+.scenario-progress .is-complete i {
+  border-color: var(--success);
+  color: var(--success);
+}
+
+.scenario-progress .is-current i {
+  border-color: var(--accent);
+  background: rgb(82 203 255 / 0.14);
+  color: var(--accent);
+}
+
+.scenario-controls {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+  padding: 0 6px 0 4px;
+}
+
+.scenario-chip {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.scenario-chip svg {
+  width: 13px;
+  height: 13px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.scenario-chip:hover:not(:disabled) {
+  border-color: rgb(82 203 255 / 0.45);
+  color: var(--foreground);
+}
+
+.scenario-chip:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.scenario-command {
+  display: grid;
+  align-items: center;
+  gap: 18px;
+  padding: 13px 14px 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.scenario-copy h2,
+.scenario-copy p {
+  margin: 0;
+}
+
+.scenario-copy .eyebrow {
+  margin-bottom: 4px;
+  color: var(--accent);
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.scenario-copy h2 {
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.scenario-copy > p:not(.eyebrow) {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  line-height: 1.35;
+}
+
+.scenario-copy small {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.58rem;
+}
+
+.scenario-copy small > span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+.scenario-copy small[data-tone="alert"] {
+  color: var(--danger);
+}
+
+.scenario-copy small[data-tone="alert"] > span {
+  background: var(--danger);
+  box-shadow: 0 0 12px rgb(var(--danger-rgb) / 0.7);
+}
+
+.scenario-command > button {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  background: rgb(82 203 255 / 0.13);
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.58rem;
+}
+
+.operator-scenario.is-alert {
+  border-color: rgb(var(--danger-rgb) / 0.7);
+  box-shadow: 0 0 0 1px rgb(var(--danger-rgb) / 0.18), 0 18px 60px rgb(0 0 0 / 0.28);
+}
+
+.operator-scenario.is-alert .scenario-command > button {
+  border-color: var(--danger);
+  background: rgb(var(--danger-rgb) / 0.12);
+  color: var(--danger);
+}
+
+/* The fault is visible where the operator is already looking, not only in the
+   scenario coach. These classes are toggled by the live map marker sync. */
+.boat-map-marker.is-link-lost .boat-map-marker-stem {
+  background: linear-gradient(to bottom, transparent, var(--danger));
+  opacity: 1;
+}
+
+.boat-map-marker.is-link-lost .boat-map-marker-dot {
+  border-color: #fff;
+  background: var(--danger);
+  box-shadow: 0 0 0 3px rgb(var(--danger-rgb) / 0.3), 0 0 18px rgb(var(--danger-rgb) / 0.7);
+}
+
+.boat-map-marker.is-link-lost .boat-map-marker-label {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+@media (max-width: 820px) {
+  .operator-scenario {
+    right: 10px;
+    bottom: 10px;
+    left: 10px;
+    width: auto;
+    transform: none;
+  }
+
+  .scenario-progress > span {
+    justify-content: center;
+    font-size: 0;
+  }
+
+  .scenario-command {
+    grid-template-columns: 1fr;
+  }
+
+  .scenario-command > button {
+    justify-content: center;
+  }
+}

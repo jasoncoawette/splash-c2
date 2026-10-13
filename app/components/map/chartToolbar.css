@@ -1,0 +1,181 @@
+/* The chart's controls, drawn on the chart: one rail at the top carrying the
+   tools, and the orders for the selection when there is one. */
+
+/* Centred on the water the panels do not cover, not on the viewport — a rail
+   centred on the whole stage slides under a panel the moment one opens. The
+   max-width keeps it off both panels on a narrow window rather than letting it
+   grow under them. */
+.chart-tools {
+  position: absolute;
+  z-index: 6;
+  top: 14px;
+  left: calc((100% + var(--chart-inset-left, 24px) - var(--chart-inset-right, 24px)) / 2);
+  display: flex;
+  justify-content: center;
+  max-width: calc(
+    100% - var(--chart-inset-left, 24px) - var(--chart-inset-right, 24px) - 16px
+  );
+  pointer-events: none;
+  transform: translateX(-50%);
+}
+
+.tool-rail {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgb(var(--surface-rgb) / 0.92);
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+  /* Rather than overflow under a panel, the rail scrolls. The console hides
+     every scrollbar, so this one is hidden too. */
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tool-rail::-webkit-scrollbar {
+  display: none;
+}
+
+/* Tools and orders stay separate groups for a screen reader while reading as
+   one rail on screen. Neither may shrink, or the icons distort before the rail
+   scrolls. */
+.tool-group {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Icon buttons: the drawing is the label, the name arrives on hover. */
+.tool-button {
+  position: relative;
+  display: grid;
+  flex: none;
+  width: 34px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.tool-button svg {
+  width: 17px;
+  height: 17px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.5;
+}
+
+.tool-button:hover {
+  border-color: rgba(82, 203, 255, 0.45);
+  color: var(--foreground);
+}
+
+.tool-button.is-active {
+  border-color: var(--accent);
+  background: rgba(82, 203, 255, 0.16);
+  color: var(--accent);
+}
+
+/* Tooltip: name, then the key, then what the order actually does. */
+.tool-button::after {
+  position: absolute;
+  z-index: 2;
+  top: calc(100% + 8px);
+  left: 50%;
+  display: block;
+  max-width: 190px;
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  background: rgb(var(--raised-rgb) / 0.97);
+  color: var(--foreground);
+  content: attr(data-tip) " " attr(data-key);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  opacity: 0;
+  pointer-events: none;
+  text-transform: uppercase;
+  transform: translateX(-50%) translateY(-3px);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  white-space: nowrap;
+}
+
+.tool-button[data-note]::after {
+  content: attr(data-tip) " — " attr(data-note);
+  text-transform: none;
+  white-space: normal;
+  width: max-content;
+  max-width: 190px;
+}
+
+.tool-button:hover::after,
+.tool-button:focus-visible::after {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+.tool-divider {
+  flex: none;
+  width: 1px;
+  height: 18px;
+  background: var(--line);
+}
+
+.tool-count {
+  display: flex;
+  flex: none;
+  align-items: baseline;
+  gap: 5px;
+  padding: 0 8px 0 10px;
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tool-count strong {
+  color: var(--accent);
+  font-size: 0.86rem;
+}
+
+.tool-target {
+  padding: 0 4px;
+  color: var(--accent);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+
+/* Light mode lifts the rail off the chart; dark mode keeps it flat. */
+:root[data-theme="light"] .tool-rail {
+  border-color: rgb(0 0 0 / 0.07);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.06),
+    0 8px 24px rgb(0 0 0 / 0.10);
+}
+
+:root[data-theme="light"] .tool-button {
+  font-weight: 500;
+}
+
+:root[data-theme="light"] .tool-button::after {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.08),
+    0 10px 26px rgb(0 0 0 / 0.14);
+}

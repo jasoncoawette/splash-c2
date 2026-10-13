@@ -1,26 +1,2347 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Surfaces are held as channels so one rule can carry many alphas, and so a
+     light palette is a token swap rather than a rewrite of every rule. */
+  --surface-rgb: 7 16 21;
+  --panel-rgb: 8 19 24;
+  --raised-rgb: 10 21 27;
+  --deep-rgb: 4 11 15;
+  --danger: #ff9a9a;
+  --danger-rgb: 255 110 110;
+
+  --background: #071015;
+  --surface: #0d1a20;
+  --surface-raised: #12232b;
+  --line: rgba(151, 202, 218, 0.16);
+  --foreground: #ffffff;
+  --muted: #72909a;
+  --accent: #52cbff;
+  --success: #69f1b3;
+  --warn: #e3a765;
+  /* The objective owns one colour. Everything tied to it — the pin, the ground
+     it claims, the legs flown around it — is drawn in this, and nothing else
+     on the chart is. Mirrored in chart/objectiveArea.ts for the GL layers,
+     which cannot read custom properties. */
+  --objective: #ff8718;
+  --objective-soft: #ffab5c;
+  --water: #071217;
+  --radius: 10px;
+}
+
+/* Light mode. The accent stays put: it is the one lit thing in the hierarchy
+   and it has to mean the same in both themes. */
+:root[data-theme="light"] {
+  /* Every overlay is white paper. The panels used to be a pale blue-grey,
+     which put them below the day basemap's land on the brightness ladder and
+     made the console read as the dim thing on its own chart. White panels over
+     a neutral-50 ground is the right way round, and the chart's own land is
+     held under them in FleetMap's basemap config. */
+  --surface-rgb: 255 255 255;
+  --panel-rgb: 255 255 255;
+  --raised-rgb: 255 255 255;
+  --deep-rgb: 255 255 255;
+  --danger: #b3261e;
+  --danger-rgb: 179 38 30;
+
+  /* The shell behind the chart, which shows only in the gaps. */
+  --background: #eceef0;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --line: rgba(20, 54, 70, 0.18);
+  --foreground: #0d2029;
+  --muted: #5a7480;
+  --accent: #0d7fb8;
+  --success: #17885c;
+  --warn: #a8641f;
+  --objective: #c0590a;
+  --objective-soft: #8f4205;
+  --water: #dce8ee;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist);
+  --font-brand: var(--font-chakra-petch);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  min-height: 100%;
 }
 
 body {
+  margin: 0;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist), sans-serif;
+  letter-spacing: -0.06em;
+}
+
+button,
+.brand-type {
+  font-family: var(--font-chakra-petch), sans-serif;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+button {
+  color: inherit;
+}
+
+.c2-shell {
+  display: flex;
+  min-height: 100svh;
+  max-height: 100svh;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 15%, rgba(82, 203, 255, 0.08), transparent 34rem),
+    var(--background);
+}
+
+.create-boat,
+.boat-card,
+.panel-heading,
+.vessel-data {
+  display: flex;
+  align-items: center;
+}
+
+.eyebrow,
+.panel-heading h1 {
+  margin: 0;
+}
+
+.eyebrow {
+  font-size: 0.78rem;
+}
+
+.create-boat {
+  gap: 10px;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #041116;
+  cursor: pointer;
+  font-size: 0.73rem;
+  font-weight: 700;
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+
+.create-boat.is-secondary {
+  border-color: rgba(82, 203, 255, 0.45);
+  background: rgba(82, 203, 255, 0.08);
+  color: var(--accent);
+}
+
+.create-boat:hover {
+  transform: translateY(-1px);
+}
+
+.create-boat:focus-visible,
+.boat-card:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.map-shell {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--water);
+}
+
+.map-canvas,
+.map-vignette {
+  position: absolute;
+  inset: 0;
+}
+
+.boat-map-marker {
+  position: relative;
+  z-index: 3;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+/* A leader that ends on the vessel below it, not a floating label. */
+.boat-map-marker-stem {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  height: 50px;
+  background: linear-gradient(to top, rgba(82, 203, 255, 0), var(--accent));
+  opacity: 0.55;
+}
+
+/* The waterline mark is the hull's own position, so it answers a click too. */
+.boat-map-marker-dot {
+  position: absolute;
+  pointer-events: auto;
+  bottom: -2px;
+  left: -2px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  background: rgb(var(--surface-rgb) / 0.9);
+}
+
+.boat-map-marker-label {
+  position: absolute;
+  bottom: 50px;
+  left: 0;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--line);
+  background: rgb(var(--surface-rgb) / 0.86);
+  white-space: nowrap;
+  pointer-events: auto;
+  transform: translateX(-50%);
+}
+
+/* Labels share the vessel's coordinate but use stable lanes around it. This
+   keeps a tight formation legible without detaching a tag from its hull. */
+.boat-map-marker[data-label-side="left"] .boat-map-marker-label {
+  left: -7px;
+  transform: translateX(-100%);
+}
+
+.boat-map-marker[data-label-side="right"] .boat-map-marker-label {
+  left: 7px;
+  transform: none;
+}
+
+.boat-map-marker[data-label-side="left"] .boat-map-marker-label::after,
+.boat-map-marker[data-label-side="right"] .boat-map-marker-label::after {
+  position: absolute;
+  bottom: -1px;
+  width: 8px;
+  height: 1px;
+  background: currentColor;
+  content: "";
+  opacity: 0.55;
+}
+
+.boat-map-marker[data-label-side="left"] .boat-map-marker-label::after {
+  right: -8px;
+}
+
+.boat-map-marker[data-label-side="right"] .boat-map-marker-label::after {
+  left: -8px;
+}
+
+.boat-map-marker-select {
+  position: absolute;
+  bottom: -18px;
+  left: -34px;
+  width: 68px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  font-size: 0;
+  opacity: 0;
+  pointer-events: auto;
+}
+
+.boat-map-marker-name {
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.boat-map-marker-class {
+  color: var(--accent);
+  font-size: 0.54rem;
+  letter-spacing: 0.08em;
+}
+
+/* The remove control only appears on the vessel the operator has tasked. */
+.boat-map-marker-remove {
+  display: none;
+  padding: 0 7px;
+  border: 0;
+  border-left: 1px solid var(--line);
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.boat-map-marker.is-selected .boat-map-marker-remove {
+  display: block;
+}
+
+.boat-map-marker-remove:hover {
+  background: rgb(var(--danger-rgb) / 0.16);
+  color: var(--danger);
+}
+
+.boat-map-marker.is-selected {
+}
+
+.boat-map-marker.is-selected .boat-map-marker-stem {
+  opacity: 1;
+}
+
+.boat-map-marker.is-selected .boat-map-marker-dot {
+  background: var(--accent);
+}
+
+.boat-map-marker.is-selected .boat-map-marker-label {
+  border-color: var(--accent);
+}
+
+.boat-map-marker.is-selected .boat-map-marker-select {
+  color: var(--foreground);
+}
+
+.map-vignette {
+  z-index: 2;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgb(var(--surface-rgb) / 0.42), transparent 18%, transparent 75%, rgb(var(--surface-rgb) / 0.28)),
+    linear-gradient(0deg, rgb(var(--surface-rgb) / 0.44), transparent 24%);
+}
+
+.fleet-panel {
+  position: relative;
+  z-index: 4;
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  border-left: 1px solid var(--line);
+  background: rgb(var(--panel-rgb) / 0.96);
+}
+
+.panel-heading {
+  justify-content: space-between;
+  padding: 25px 22px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.eyebrow {
+  color: var(--accent);
+}
+
+.panel-heading h1 {
+  margin-top: 8px;
+  font-size: 1.8rem;
+  font-weight: 500;
+}
+
+.fleet-count {
+  color: rgba(233, 242, 244, 0.12);
+  font-size: 3.2rem;
+  font-weight: 700;
+}
+
+.boat-grid {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  align-content: start;
+  gap: 8px;
+  padding: 14px;
+  overflow-y: auto;
+}
+
+.boat-card {
+  position: relative;
+  width: 100%;
+  min-height: 82px;
+  gap: 13px;
+  padding: 12px 13px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.018);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.boat-card:hover {
+  border-color: rgba(82, 203, 255, 0.45);
+  transform: translateX(-2px);
+}
+
+.boat-card.is-selected {
+  border-color: var(--accent);
+  background: linear-gradient(90deg, rgba(82, 203, 255, 0.13), rgba(82, 203, 255, 0.025));
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.boat-card-index {
+  color: var(--accent);
+  font-size: 0.72rem;
+}
+
+.boat-card-main,
+.boat-card-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.boat-card-main {
+  min-width: 0;
+  flex: 1;
+  gap: 5px;
+}
+
+.boat-card-main strong {
+  overflow: hidden;
+  font-size: 0.76rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.boat-card-main span,
+.boat-card-meta {
+  color: var(--muted);
+  font-size: 0.58rem;
+}
+
+.boat-card-meta {
+  align-items: flex-end;
+  gap: 5px;
+}
+
+.boat-card-class {
+  color: var(--accent);
+  font-size: 0.52rem;
+  letter-spacing: 0.1em;
+}
+
+.selected-vessel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+
+.remove-boat {
+  padding: 5px 10px;
+  border: 1px solid rgb(var(--danger-rgb) / 0.4);
+  background: rgb(var(--danger-rgb) / 0.08);
+  color: var(--danger);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.remove-boat:hover:not(:disabled) {
+  border-color: rgb(var(--danger-rgb) / 0.8);
+  background: rgb(var(--danger-rgb) / 0.18);
+}
+
+.remove-boat:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.selected-vessel {
+  margin-top: auto;
+  padding: 20px 22px 24px;
+  border-top: 1px solid var(--line);
+  background: rgba(82, 203, 255, 0.025);
+}
+
+.vessel-data {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 11px 20px;
+  margin-top: 17px;
+  font-size: 0.86rem;
+}
+
+.vessel-data span {
+  color: var(--muted);
+}
+
+.vessel-data strong {
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.mapboxgl-ctrl-group {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: rgb(var(--surface-rgb) / 0.88);
+}
+
+.mapboxgl-ctrl-group button {
+  background-color: transparent;
+}
+
+.mapboxgl-ctrl-icon {
+  filter: invert(1);
+}
+
+.mapboxgl-ctrl-attrib {
+  letter-spacing: normal;
+}
+
+@media (max-width: 900px) {
+  .fleet-panel {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
+  .boat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 580px) {
+  .create-group {
+    gap: 6px;
+  }
+
+  .create-boat {
+    padding: 0 10px;
+    font-size: 0.58rem;
+  }
+
+  .boat-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   SHARED CONTROLS
+   Buttons, segments and chips used by both the helm console and the fleet bar.
+--------------------------------------------------------------------------- */
+
+.ghost-button,
+.segment-button,
+.chip-button {
+  color: var(--foreground);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  font-size: 0.64rem;
+  font-weight: 600;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.ghost-button:hover:not(:disabled),
+.segment-button:hover:not(:disabled),
+.chip-button:hover:not(:disabled) {
+  border-color: rgba(82, 203, 255, 0.5);
+  color: var(--foreground);
+}
+
+.ghost-button:disabled,
+.segment-button:disabled,
+.chip-button:disabled,
+.mission-tile:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.ghost-button.is-live,
+.chip-button.is-primary,
+.segment-button.is-active {
+  border-color: var(--accent);
+  background: rgba(82, 203, 255, 0.14);
+  color: var(--foreground);
+}
+
+.ghost-button.is-primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #041116;
+}
+
+.ghost-button.is-wide {
+  width: 100%;
+  margin-top: 16px;
+}
+
+.segment {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 3px);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.segment > span {
+  padding-left: 7px;
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.segment-button {
+  min-height: 28px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.chip-button.is-group em {
+  color: var(--accent);
+  font-size: 0.56rem;
+  font-style: normal;
+}
+
+.console-label,
+.meter-head,
+.readout span,
+.thruster-label {
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+/* -- instrument primitives -------------------------------------------------- */
+
+.arc {
+  fill: none;
+}
+
+.arc.tone-accent { stroke: var(--accent); }
+.arc.tone-success { stroke: var(--success); }
+.arc.tone-warn { stroke: var(--warn); }
+.arc.tone-muted { stroke: rgba(151, 202, 218, 0.45); }
+.arc.is-faint { opacity: 0.25; }
+
+.meter {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.meter-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.meter-track {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(151, 202, 218, 0.14);
+  overflow: hidden;
+}
+
+.meter-fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  transition: width 220ms ease;
+}
+
+.meter-fill.tone-accent { background: var(--accent); }
+.meter-fill.tone-success { background: var(--success); }
+.meter-fill.tone-warn { background: var(--warn); }
+.meter-fill.tone-muted { background: var(--muted); }
+
+.readout {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.readout.is-end { align-items: flex-end; }
+.readout.is-center { align-items: center; }
+
+.readout strong {
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.readout strong em {
+  margin-left: 3px;
+  font-size: 0.6rem;
+  font-style: normal;
+}
+
+.readout .tone-accent { color: var(--accent); }
+.readout .tone-success { color: var(--success); }
+.readout .tone-warn { color: var(--warn); }
+
+/* ---------------------------------------------------------------------------
+   HELM CONSOLE — the front view and the three panels under it
+--------------------------------------------------------------------------- */
+
+.helm {
+  position: relative;
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-rows: minmax(250px, 1fr) auto auto minmax(0, 1.15fr);
+  background: rgb(var(--deep-rgb));
+}
+
+.forward-view {
+  position: relative;
+  min-height: 250px;
+  overflow: hidden;
+  background: #060f14;
+}
+
+.forward-scene {
+  position: absolute;
+  inset: -8% -6%;
+  transform-origin: 50% 60%;
+  transition: transform 180ms linear;
+}
+
+.forward-sky {
+  position: absolute;
+  inset: 0 0 52% 0;
+  background: linear-gradient(180deg, #0a171f 0%, #16303d 55%, #2b5468 100%);
+}
+
+.forward-horizon {
+  position: absolute;
+  top: 48%;
+  right: 0;
+  left: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(190, 224, 240, 0.75), transparent);
+}
+
+.forward-sea {
+  position: absolute;
+  inset: 48% 0 0 0;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      rgba(214, 238, 248, 0.05) 0 1px,
+      transparent 1px 7px
+    ),
+    linear-gradient(180deg, #16323f 0%, #0a1a22 45%, #050d11 100%);
+  background-size: 100% 26px, 100% 100%;
+}
+
+.forward-sea[data-moving="true"] {
+  animation: sea-run 2.6s linear infinite;
+}
+
+@keyframes sea-run {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 0 26px, 0 0; }
+}
+
+.forward-contacts {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.forward-contact {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.forward-contact-bracket {
+  display: block;
+  width: 46px;
+  height: 20px;
+  border: 1px solid rgba(82, 203, 255, 0.7);
+  border-right-width: 0;
+  border-left-width: 0;
+  box-shadow: inset 7px 0 0 -6px var(--accent), inset -7px 0 0 -6px var(--accent);
+}
+
+.forward-contact-label {
+  display: flex;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 5px;
+  color: var(--accent);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.forward-contact-label em {
+  color: var(--muted);
+  font-style: normal;
+}
+
+/* An svg is a replaced element: left/right alone size it to its own aspect
+   ratio, so the width is declared. */
+.forward-bow {
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 46%;
+}
+
+.forward-bow-hull { fill: #101a20; }
+
+.forward-bow-rim {
+  fill: none;
+  stroke: rgba(214, 238, 248, 0.85);
+  stroke-width: 2.5;
+}
+
+.forward-bow-hatch { fill: #04080a; }
+
+.forward-overlay {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  left: 16px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.chip {
+  padding: 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgb(var(--deep-rgb) / 0.72);
+  backdrop-filter: blur(8px);
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.56rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.chip.is-live {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+/* -- heading tape ----------------------------------------------------------- */
+
+.heading-tape {
+  position: relative;
+  height: 76px;
+  flex: none;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: rgb(var(--deep-rgb));
+}
+
+.tape-track {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.tape-tick {
+  position: absolute;
+  top: 16px;
+  width: 1px;
+  height: 7px;
+  background: rgba(151, 202, 218, 0.4);
+}
+
+.tape-tick.is-major {
+  height: 13px;
+  background: rgba(220, 240, 248, 0.75);
+}
+
+.tape-tick em {
+  position: absolute;
+  top: 17px;
+  left: 50%;
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.56rem;
+  font-style: normal;
+  transform: translateX(-50%);
+}
+
+.tape-bug {
+  position: absolute;
+  top: 9px;
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--warn);
+  border-radius: 50%;
+  transform: translateX(-50%);
+}
+
+.tape-contact {
+  position: absolute;
+  top: -1px;
+  color: var(--warn);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.08em;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.tape-bow {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translateX(-50%);
+}
+
+.tape-bow-mark {
+  width: 1px;
+  height: 15px;
+  background: var(--foreground);
+}
+
+.tape-bow-value {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 16px;
+  padding: 3px 10px;
+  border-radius: var(--radius);
+  background: rgb(var(--deep-rgb));
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.tape-bow-value strong {
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: rgba(233, 242, 244, 0.1);
+  color: var(--foreground);
+  font-size: 0.74rem;
+}
+
+/* -- helm bar and panels ---------------------------------------------------- */
+
+.helm-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--line);
+  background: rgb(var(--panel-rgb) / 0.9);
+}
+
+.helm-identity {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.helm-identity strong {
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+}
+
+.helm-identity span {
+  color: var(--muted);
+  font-size: 0.62rem;
+}
+
+.helm-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.helm-panels {
+  display: grid;
+  min-height: 0;
+  gap: 14px;
+  padding: 14px 18px 18px;
+  grid-template-columns: 300px minmax(0, 1fr) 300px;
+  /* A bounded row is what lets the route lane shrink instead of growing the
+     console to its own intrinsic aspect ratio. */
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.console-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex-direction: column;
+  overflow-y: auto;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 4px);
+  background: rgb(var(--raised-rgb) / 0.86);
+}
+
+.console-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 11px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+
+.console-panel-head h2 {
+  margin: 0;
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+/* -- propulsion ------------------------------------------------------------- */
+
+.propulsion-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.propulsion-ring svg {
+  width: 100%;
+  max-width: 208px;
+  height: auto;
+}
+
+.rudder-needle {
+  stroke: var(--foreground);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
+.propulsion-center {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+}
+
+.propulsion-center strong {
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 2.5rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.propulsion-center > span {
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.5rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.propulsion-split {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  color: var(--foreground);
+  font-size: 0.74rem;
+}
+
+.propulsion-split em {
+  font-style: normal;
+}
+
+.propulsion-split span {
+  color: var(--muted);
+}
+
+.propulsion-rudder {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.propulsion-corner {
+  position: absolute;
+}
+
+.propulsion-corner.is-left { bottom: 8%; left: 0; }
+.propulsion-corner.is-right { right: 0; bottom: 8%; }
+.propulsion-corner.is-pitch { top: 10%; left: 0; }
+
+.thrusters {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.thruster-pair {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.thruster-label {
+  text-align: center;
+}
+
+.helm-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.helm-controls[data-enabled="false"] {
+  opacity: 0.4;
+}
+
+.helm-controls label,
+.cruise-field {
+  display: grid;
+  align-items: center;
+  gap: 9px;
+  grid-template-columns: 52px minmax(0, 1fr) 54px;
+}
+
+.helm-controls label > span,
+.cruise-field > span {
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.54rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.helm-controls em,
+.cruise-field em {
+  color: var(--foreground);
+  font-size: 0.64rem;
+  font-style: normal;
+  text-align: right;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 3px;
+  appearance: none;
+  border-radius: 2px;
+  background: rgba(151, 202, 218, 0.22);
+  outline-offset: 5px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  width: 13px;
+  height: 13px;
+  appearance: none;
+  border: 1px solid #041116;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+
+input[type="range"]:disabled::-webkit-slider-thumb {
+  background: var(--muted);
+  cursor: not-allowed;
+}
+
+/* -- route lane ------------------------------------------------------------- */
+
+.console-panel.is-route {
+  gap: 10px;
+  padding: 16px 16px 14px;
+}
+
+.route-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.route-head strong {
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.route-unit {
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.route-next {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-left: 14px;
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.route-lane {
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  border-radius: var(--radius);
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(82, 203, 255, 0.07), transparent 62%),
+    #050d11;
+}
+
+.route-horizon {
+  stroke: rgba(151, 202, 218, 0.35);
+  stroke-dasharray: 5 5;
+  stroke-width: 1;
+}
+
+.route-corridor {
+  fill: rgba(82, 203, 255, 0.12);
+  stroke: rgba(82, 203, 255, 0.3);
+  stroke-width: 1;
+}
+
+.route-track {
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.route-point circle {
+  fill: #050d11;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+}
+
+.route-point.is-next circle {
+  fill: var(--accent);
+}
+
+.route-point text,
+.route-contact text {
+  fill: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+
+.route-contact rect {
+  fill: rgba(227, 167, 101, 0.85);
+}
+
+.route-own-ship {
+  fill: var(--foreground);
+}
+
+.route-foot {
+  padding-top: 4px;
+}
+
+/* -- instruments ------------------------------------------------------------ */
+
+.tilt-gauge {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.tilt-gauge svg {
+  width: 100%;
+  max-width: 208px;
+  height: auto;
+}
+
+.tilt-tick {
+  stroke: rgba(151, 202, 218, 0.4);
+  stroke-width: 1.4;
+}
+
+.tilt-tick.is-major {
+  stroke: var(--warn);
+  stroke-width: 2;
+}
+
+.tilt-waterline {
+  stroke: rgba(227, 167, 101, 0.75);
+  stroke-width: 1.4;
+}
+
+.tilt-hull {
+  fill: none;
+  stroke: var(--foreground);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+.tilt-value {
+  position: absolute;
+  top: 34%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.tilt-value strong {
+  color: var(--warn);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 1.15rem;
+}
+
+.tilt-value span {
+  color: var(--muted);
+  font-size: 0.5rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.energy-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+.energy-bars {
+  display: flex;
+  height: 58px;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.energy-bars span {
+  min-height: 2px;
+  flex: 1;
+  background: #d4514d;
+  opacity: 0.85;
+}
+
+.energy-figures {
+  display: flex;
+  justify-content: space-between;
+}
+
+.energy-state {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+
+/* ---------------------------------------------------------------------------
+   FLEET ORCHESTRATION BAR
+--------------------------------------------------------------------------- */
+
+/* A declared height, so a long vessel list scrolls inside the bar instead of
+   pushing the chart off the screen. */
+.fleet-bar {
+  display: flex;
+  height: clamp(252px, 32svh, 344px);
+  min-height: 0;
+  flex: none;
+  flex-direction: column;
+  border-top: 1px solid var(--line);
+  background: rgb(var(--panel-rgb) / 0.97);
+  backdrop-filter: blur(18px);
+}
+
+.fleet-bar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.fleet-bar-title {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.fleet-bar-title strong {
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.chip-row,
+.fleet-bar-settings {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cruise-field {
+  grid-template-columns: 46px 96px 48px;
+}
+
+.fleet-bar-body {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  gap: 12px;
+  padding: 12px 18px 16px;
+  grid-template-columns: 224px minmax(260px, 0.9fr) minmax(0, 1.1fr);
+  grid-template-rows: minmax(0, 1fr);
+  overflow: hidden;
+}
+
+.lead-card,
+.mission-tiles,
+.vessel-chips {
+  min-width: 0;
+}
+
+.lead-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 4px);
+  background: linear-gradient(160deg, rgba(82, 203, 255, 0.09), rgba(255, 255, 255, 0.015));
+}
+
+.lead-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.lead-card strong {
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.9rem;
+}
+
+.lead-card-id {
+  color: var(--muted);
+  font-size: 0.6rem;
+}
+
+.lead-card-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+}
+
+.lead-card-actions .ghost-button {
+  flex: 1;
+}
+
+.mission-tiles {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.mission-tiles-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.objective-readout {
+  color: var(--muted);
+  font-size: 0.58rem;
+}
+
+.mission-tile-grid {
+  display: grid;
+  min-height: 0;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  overflow-y: auto;
+}
+
+.mission-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 4px);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 150ms ease, background 150ms ease, transform 150ms ease;
+}
+
+.mission-tile:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(82, 203, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.mission-tile strong {
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.68rem;
+}
+
+.mission-tile span {
+  color: var(--muted);
+  font-size: 0.55rem;
+  letter-spacing: 0;
+  line-height: 1.35;
+  text-transform: none;
+}
+
+.mission-tile em {
+  margin-top: auto;
+  color: var(--accent);
+  font-size: 0.5rem;
+  font-style: normal;
+  letter-spacing: 0.12em;
+}
+
+.tile-glyph {
+  width: 34px;
+  height: 34px;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+.tile-glyph .is-fill {
+  fill: var(--accent);
+  stroke: none;
+}
+
+.tile-glyph .is-soft {
+  opacity: 0.35;
+}
+
+.vessel-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  overflow-y: auto;
+}
+
+.vessel-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 150ms ease, background 150ms ease;
+}
+
+.vessel-chip.is-selected {
+  border-color: var(--accent);
+  background: rgba(82, 203, 255, 0.1);
+}
+
+.vessel-chip-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.vessel-chip-head strong {
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.66rem;
+}
+
+.vessel-chip-head em {
+  color: var(--muted);
+  font-size: 0.52rem;
+  font-style: normal;
+  letter-spacing: 0.1em;
+}
+
+.vessel-chip-head em.is-live {
+  color: var(--success);
+}
+
+.vessel-chip-meta {
+  color: var(--muted);
+  font-size: 0.56rem;
+}
+
+.boat-card.is-grouped::after {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+  content: "";
+}
+
+.boat-map-marker.is-grouped .boat-map-marker-label {
+  border-color: rgba(82, 203, 255, 0.6);
+}
+
+@media (max-width: 1280px) {
+  .helm-panels {
+    grid-template-columns: 260px minmax(0, 1fr) 260px;
+  }
+
+  .fleet-bar-body {
+    grid-template-columns: 200px minmax(0, 1fr) 220px;
+  }
+
+  .mission-tile-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 900px) {
+  .c2-shell {
+    max-height: none;
+  }
+
+  .helm {
+    grid-template-rows: auto auto auto auto;
+  }
+
+  .helm-panels {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto;
+    overflow: visible;
+  }
+
+  .route-lane {
+    min-height: 280px;
+  }
+
+  .fleet-bar {
+    height: auto;
+  }
+
+  .fleet-bar-body {
+    grid-template-rows: auto;
+    overflow: visible;
+  }
+
+  .fleet-bar-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mission-tile-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Shown only while the console streams in: the store cannot be built during
+   Next's prerender, so the first paint is a calm surface, not a flash. */
+.console-boot {
+  width: 100%;
+  height: 100svh;
+  background: var(--background);
+}
+
+/* ---------------------------------------------------------------------------
+   THE CHART CARRIES NO TEXT OF ITS OWN
+   Mapbox's badges go with the readouts: the operator asked for a quiet chart,
+   and everything they removed was decoration or a label repeating the panel.
+   NOTE: hiding the Mapbox wordmark and attribution is a Mapbox terms-of-service
+   matter, not a technical one. Restore both before any public deployment.
+--------------------------------------------------------------------------- */
+
+.mapboxgl-ctrl-logo,
+.mapboxgl-ctrl-attrib,
+.mapboxgl-ctrl-bottom-right,
+.mapboxgl-ctrl-bottom-left {
+  display: none !important;
+}
+
+/* -- the dropped objective -------------------------------------------------- */
+
+.objective-pin {
+  position: relative;
+  display: grid;
+  width: 30px;
+  height: 40px;
+  justify-items: center;
+  pointer-events: auto;
+  cursor: grab;
+}
+
+.objective-pin.is-dragging {
+  cursor: grabbing;
+}
+
+.objective-pin.is-dragging .objective-pin-mark {
+  filter: drop-shadow(0 10px 14px rgb(var(--deep-rgb) / 0.8));
+}
+
+.objective-pin-mark {
+  width: 26px;
+  height: 36px;
+}
+
+/* Orange against white: the one thing on the chart that is neither our fleet
+   (cyan) nor traffic (amber), so it cannot be mistaken for either. */
+.objective-pin-body {
+  fill: var(--objective);
+  stroke: #ffffff;
+  stroke-width: 1.8;
+}
+
+.objective-pin-core {
+  fill: #ffffff;
+}
+
+
+
+
+.objective-pin-label {
+  position: absolute;
+  top: 42px;
+  color: var(--objective-soft);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+
+/* The tip the objective area raises under the pointer. It states what the ring
+   is and who is working it; it never offers an action, because hovering is not
+   a commitment and the click already has a card of its own. */
+.objective-tip .mapboxgl-popup-content {
+  display: grid;
+  gap: 2px;
+  padding: 7px 11px;
+  border: 1px solid rgb(255 135 24 / 0.45);
+  border-radius: var(--radius);
+  background: rgb(var(--deep-rgb) / 0.88);
+  box-shadow: 0 10px 24px rgb(var(--deep-rgb) / 0.55);
+  backdrop-filter: blur(8px);
+  font-family: var(--font-chakra-petch), sans-serif;
+  pointer-events: none;
+}
+
+.objective-tip .mapboxgl-popup-tip {
+  display: none;
+}
+
+.objective-tip-title {
+  color: var(--objective);
+  font-size: 0.58rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.objective-tip-line {
+  color: var(--muted);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+}
+
+.map-objective-hint {
+  position: absolute;
+  z-index: 3;
+  bottom: 66px;
+  left: 50%;
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgb(var(--deep-rgb) / 0.72);
+  backdrop-filter: blur(8px);
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.55rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+/* The console is a fixed surface, not a document: panels still scroll, but no
+   scrollbar is ever drawn over the chart or the helm. */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+html,
+body {
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+/* Depth toggle, bottom-left of the chart, with the caveat attached to it so the
+   claim and its limit are never separated. */
+.chart-toggle.is-live {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.chart-caveat {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.56rem;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
+
+/* ---------------------------------------------------------------------------
+   SCREENING A CONTACT
+   Escort and monitor are tasked against something that moves, so this block
+   names the target first and only then offers the two orders.
+--------------------------------------------------------------------------- */
+
+.screen-panel {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.target-row {
+  display: grid;
+  gap: 9px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.target-select {
+  min-width: 0;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--foreground);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
+}
+
+.target-select:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+}
+
+.standoff-field {
+  display: grid;
+  align-items: center;
+  gap: 8px;
+  grid-template-columns: auto 92px 62px;
+}
+
+.standoff-field > span {
+  color: var(--muted);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.54rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.standoff-field em {
+  color: var(--foreground);
+  font-size: 0.62rem;
+  font-style: normal;
+  text-align: right;
+}
+
+.follow-tiles {
+  display: grid;
+  min-height: 0;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow-y: auto;
+}
+
+/* -- perimeter handles ------------------------------------------------------ */
+
+.perimeter-handle {
+  display: grid;
+  padding: 0;
+  border: 0;
+  background: none;
+  place-items: center;
+  touch-action: none;
+}
+
+.perimeter-handle.is-centre {
+  gap: 4px;
+  grid-auto-flow: row;
+}
+
+.perimeter-handle-dot {
+  width: 13px;
+  height: 13px;
+  border: 1px solid var(--accent);
+  border-radius: 50%;
+  background: rgb(var(--surface-rgb) / 0.9);
+}
+
+.perimeter-handle.is-active .perimeter-handle-dot {
+  background: var(--accent);
+}
+
+.perimeter-handle-name {
+  color: var(--accent);
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.52rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.perimeter-handle.is-rim {
+  width: 16px;
+  height: 16px;
+  border: 1px solid rgba(82, 203, 255, 0.75);
+  background: rgb(var(--surface-rgb) / 0.85);
+}
+
+.perimeter-handle.is-rim::after {
+  width: 5px;
+  height: 5px;
+  background: var(--accent);
+  content: "";
+}
+
+.perimeter-handle.is-rim.is-active {
+  border-color: var(--accent);
+}
+
+/* -- chart icon controls ---------------------------------------------------- */
+
+.chart-control {
+  position: absolute;
+  z-index: 6;
+  top: 16px;
+  right: var(--chart-inset-right, 24px);
+  display: flex;
+  gap: 8px;
+}
+
+.chart-toggle {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgb(var(--deep-rgb) / 0.72);
+  backdrop-filter: blur(10px);
+  color: var(--muted);
+  cursor: pointer;
+  place-items: center;
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+}
+
+.chart-toggle svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+
+.chart-toggle:hover {
+  border-color: rgba(82, 203, 255, 0.5);
+  color: var(--foreground);
+}
+
+.chart-toggle.is-live {
+  border-color: var(--accent);
+  background: rgba(82, 203, 255, 0.16);
+  color: var(--accent);
+}
+
+/* The platform drawing sheet at /profiles. */
+.profile-sheet {
+  min-height: 100svh;
+  padding: 48px clamp(20px, 5vw, 72px) 64px;
+  background: var(--background);
+  color: var(--foreground);
+  overflow-y: auto;
+}
+
+.profile-sheet h1 {
+  margin: 4px 0 10px;
+  font-family: var(--font-brand), var(--font-sans), sans-serif;
+  font-size: 1.9rem;
+  letter-spacing: 0.04em;
+}
+
+.profile-note {
+  max-width: 62ch;
+  margin: 0 0 32px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+
+.profile-grid {
+  display: grid;
+  gap: 28px;
+  grid-template-columns: repeat(auto-fit, minmax(420px, 1fr));
+}
+
+/* VESSEL PLATFORM DRAWINGS
+   Three stroke weights: the hull carries the eye, fittings sit under it, and
+   the construction grid stays almost out of the way. Everything is stroke-only
+   — an SVG path defaults to a solid black fill, which is what turns a wireframe
+   into a silhouette. */
+.vp-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 22px 24px 18px;
+  border: 1px solid var(--line);
+  background: rgb(var(--panel-rgb) / 0.6);
+}
+
+.vp-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.vp-name {
+  margin: 0;
+  color: var(--foreground);
+  font-family: var(--font-brand), var(--font-sans), sans-serif;
+  font-size: 1.05rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.vp-role {
+  color: var(--muted);
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vp-drawing {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.vp-outline {
+  fill: none;
+  stroke: var(--foreground);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.vp-detail {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1;
+  stroke-linejoin: round;
+  opacity: 0.85;
+  vector-effect: non-scaling-stroke;
+}
+
+.vp-construction {
+  fill: none;
+  stroke: var(--muted);
+  stroke-width: 0.6;
+  stroke-dasharray: 3 4;
+  opacity: 0.4;
+  vector-effect: non-scaling-stroke;
+}
+
+.vp-plan {
+  fill: none;
+  stroke: var(--foreground);
+  stroke-width: 1.2;
+  opacity: 0.85;
+  vector-effect: non-scaling-stroke;
+}
+
+.vp-table {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(74px, 1fr));
+  gap: 10px 16px;
+  margin: 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.vp-table div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.vp-table dt {
+  color: var(--muted);
+  font-size: 0.56rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.vp-table dd {
+  margin: 0;
+  color: var(--foreground);
+  font-size: 0.85rem;
+}
+
+/* ---------------------------------------------------------------------------
+   WHAT CAN I DO WITH THIS?
+   The answer appears where the thing is, rather than in a panel the operator
+   has to go and find.
+--------------------------------------------------------------------------- */
+
+.chart-actions {
+  position: absolute;
+  z-index: 6;
+  width: 232px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 4px);
+  background: rgb(var(--deep-rgb) / 0.94);
+  backdrop-filter: blur(14px);
+  transform: translate(18px, -50%);
+}
+
+.chart-actions-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 11px 12px 9px;
+  border-bottom: 1px solid var(--line);
+}
+
+.chart-actions-head strong {
+  display: block;
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.74rem;
+  letter-spacing: 0.03em;
+}
+
+.chart-actions-head span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.56rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.chart-actions-close {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.chart-actions-close:hover {
+  color: var(--foreground);
+}
+
+.chart-actions-list {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  gap: 2px;
+}
+
+.chart-action {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 9px;
+  border: 0;
+  border-radius: var(--radius);
+  background: none;
+  color: var(--foreground);
+  cursor: pointer;
+  font-family: var(--font-chakra-petch), sans-serif;
+  font-size: 0.64rem;
+  letter-spacing: 0.04em;
+  text-align: left;
+  text-transform: none;
+  transition: background 140ms ease, color 140ms ease;
+}
+
+.chart-action em {
+  color: var(--muted);
+  font-size: 0.54rem;
+  font-style: normal;
+  white-space: nowrap;
+}
+
+.chart-action:hover:not(:disabled) {
+  background: rgb(var(--surface-rgb) / 0.9);
+}
+
+.chart-action.is-primary {
+  color: var(--accent);
+}
+
+.chart-action.is-danger {
+  color: var(--danger, #ff9a9a);
+}
+
+.chart-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+/* -- vessel detail actions --------------------------------------------------- */
+
+/* No margin-top: auto. The actions used to be pushed to the bottom of a
+   full-height panel, which left a column of nothing between them and the data
+   they act on — the panel read as half empty rather than as one card. They sit
+   under the data now, and the panel hugs what it holds. */
+.detail-actions {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border-top: 1px solid var(--line);
+  grid-template-columns: 1fr 1fr;
+}
+
+/* The primary order gets its own row; the two secondary ones share the next. */
+.detail-actions > :first-child {
+  grid-column: 1 / -1;
+  min-height: 42px;
+}
+
+.detail-actions .ghost-button {
+  min-height: 36px;
+}
+
+/* -- group colours ----------------------------------------------------------- */
+
+.boat-map-marker.is-grouped-colour .boat-map-marker-dot {
+  border-color: var(--group-colour);
+}
+
+.boat-map-marker.is-grouped-colour .boat-map-marker-stem {
+  background: linear-gradient(to top, transparent, var(--group-colour));
+}
+
+.boat-map-marker.is-grouped-colour .boat-map-marker-label {
+  border-color: color-mix(in srgb, var(--group-colour) 60%, transparent);
+}
+
+.boat-map-marker.is-grouped-colour .boat-map-marker-class {
+  color: var(--group-colour);
+}
+
+.boat-map-marker.is-grouped-colour.is-selected .boat-map-marker-dot {
+  background: var(--group-colour);
+}
+
+/* The vessel data had no padding of its own and sat flush to the panel edge. */
+.vessel-detail .detail-body {
+  padding: 14px;
+}
+
+/* LIGHT-MODE OVERLAYS
+ *
+ * In light mode every overlay is paper, not glass. The alphas below carry the
+ * dark console, where a chart glowing faintly through a panel is the point;
+ * over a near-white harbour the same alphas left each panel within a shade of
+ * the land it sat on, so nothing read as being above anything. One rule, at
+ * the end of the file, puts every floating surface at full white and lets the
+ * borders and shadows do the separating. The chart's own ground is held just
+ * under white in FleetMap's basemap config, so the brightest thing on the
+ * screen is always something the operator opened.
+ */
+:root[data-theme="light"] :is(
+  .fleet-panel,
+  .fleet-bar,
+  .helm-bar,
+  .helm-dock,
+  .helm-confirm-card,
+  .console-panel,
+  .console-handle,
+  .shell-panel,
+  .shell-panel .panel-heading,
+  .shell-panel .create-group,
+  .tool-rail,
+  .chart-actions,
+  .mapboxgl-ctrl-group,
+  .operator-scenario
+) {
+  background-color: rgb(var(--panel-rgb));
 }

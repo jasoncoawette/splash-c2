@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Splash C2
 
-## Getting Started
+A deliberately small command-and-control demo for supervising autonomous boats.
 
-First, run the development server:
+The first vertical slice loads two valid boats, assigns a three-waypoint mission to one boat, advances it deterministically, and proves the other remains idle. Domain code stays independent of React, Redux, MapLibre, sockets, and wall-clock time.
+
+The chart carries no chrome: there is no top bar, no readouts over the water, and the Mapbox badges are hidden. Sea indicators and live traffic both come from [Open Waters](https://openwaters.io), neither of which needs an API key — [Seamap](https://tiles.openwaters.io/seamap/tiles.json) vector tiles for seamarks, lights and hazards, and [Open Waters AIS](https://ais.openwaters.io/v1/vessels/tiles.json) for real vessel positions, refreshed on the service's own 15 second cadence.
+
+Clicking the chart drops the objective pin, which stays on the water rather than following the camera. Clicking a contact targets it instead, and the selection can then escort or monitor it: each boat is given a station in the target's frame, re-planned every tick, so a screen holds on a ship that is under way. "Raise perimeter" rings the objective with the selection; dragging the ring's centre or its rim re-plans the same missions in place rather than issuing new ones.
+
+Both services are CC-BY and neither is for navigation. Hiding the Mapbox wordmark and attribution is a licensing decision, not a technical one — restore both, and credit Open Waters, before any public deployment.
+
+The screen has two views. **Fleet** is the chart: a Mapbox GL map carrying procedural Three.js hulls, the route of every tasked boat, and one rail at the top of the chart. The rail carries the chart tools, and grows to carry the orders for the selection the moment there is one, so giving an order never means leaving the chart or chasing a bar around the water. A selection can be routed to one of five mission patterns around the objective. **Front view** is the helm of one boat: the view from its bow with contacts at their true relative bearing, a heading tape, and propulsion, route and instrument panels. Taking over hands the throttle and rudder to the operator while the boat keeps its mission, so releasing the helm resumes the route.
+
+The current operations screen includes a Mapbox GL map, procedural Three.js Typhoon models, a synchronized boat grid, and immutable in-browser boat creation. Boats are selected and moved as a group on the chart: shift-drag over open water draws a marquee (hold alt to add to the selection), dragging any selected hull or the group anchor moves the whole group by the same screen offset, escape cancels a drag, and links from the anchor to each hull show what is moving together. The console is one chart with two panels over it — the fleet down the left, the selected vessel down the right — each collapsing on its own handle to clear the chart. A selected hull wears the objective's orange, the same colour as the pin and the route legs between them, so the boat in hand and the place it is being sent read as one thought. Taking a boat opens the helm: its own hull in 3D with contacts drawn at their true bearing and aspect, the leg to the next waypoint, speed, limit, charge and mode in the top-left cluster, and a course-up chart in the corner. Four camera stations — chase, aft, mast and bow — look at the same scene. Without a token, the map uses its built-in local tactical style. To enable Mapbox chart tiles:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env.local
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then replace the placeholder in `.env.local` with a public Mapbox token and restart `pnpm dev`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Read [REQUIREMENTS.md](./REQUIREMENTS.md) before adding a feature. Requirements are questioned and deleted before the surviving design is simplified, accelerated, and automated.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deploying
 
-## Learn More
+The repo ships a `Dockerfile`, which is all Railway needs: point a service at
+this repo and it builds the image rather than guessing a buildpack.
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+docker build -t splash-c2 .
+docker run --rm -p 3000:3000 splash-c2
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Three things are worth knowing before the first deploy.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+`NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN` is baked into the client bundle **at build
+time**, not read at boot — that is what the `NEXT_PUBLIC_` prefix means. Set it
+as a Railway service variable so the build receives it; the Dockerfile declares
+the matching `ARG`. Set it only as a runtime variable and the deploy will come
+up with the local tactical style instead of Mapbox tiles, with no error to
+explain why.
 
-## Deploy on Vercel
+`PORT` is injected by Railway and read by the server; `HOSTNAME` is pinned to
+`0.0.0.0` in the image, because a server bound to localhost is unreachable from
+the proxy in front of it.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The build emits Next's standalone output (`output: "standalone"` in
+`next.config.ts`), so the runtime stage carries the server and the traced
+modules only — no pnpm, no sources, no dev dependencies.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Commands
+
+```bash
+pnpm dev
+pnpm test
+pnpm typecheck
+pnpm lint
+pnpm verify
+```
+
+The test command intentionally uses Node's built-in runner and TypeScript stripping. The current core tests do not justify a browser test environment or additional testing dependencies.

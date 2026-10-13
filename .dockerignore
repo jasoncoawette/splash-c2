@@ -1,0 +1,26 @@
+# Everything the build makes for itself, plus everything it must never see.
+node_modules
+.next
+out
+build
+coverage
+.git
+.gitignore
+.github
+.vscode
+.idea
+.DS_Store
+*.log
+*.tsbuildinfo
+next-env.d.ts
+Dockerfile
+.dockerignore
+README.md
+REQUIREMENTS.md
+docs
+tests
+# Secrets stay out of the image and out of the build context. .env.example is
+# documentation, so it is allowed through.
+.env
+.env.*
+!.env.example
